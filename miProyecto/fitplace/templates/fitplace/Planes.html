@@ -1,0 +1,75 @@
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+
+    <title>FitPlace-Planes</title>
+</head>
+<body>
+    <div class="header">
+        
+        <img src=" {% static 'fitplace/img/logofit.png' %}"  alt="fitPLaceLOGO" class="logo">
+  
+        <div style="margin-left: auto; padding: 20px; display: flex;">
+            
+        </div>
+        <div>
+            <a href="{% url 'perfil' %}"><img src=" {% static 'fitplace/img/volver.png' %}"  alt="" class="imgsalir"></a>
+        </div>
+            
+    </div>
+    <div class="body">
+        
+        <h1 class="title">PLANES</h1>
+        <div class="container">
+            <h1 class="title">ELITE FIT</h1><br>
+            <div class="perfil">
+                
+                <div class="info">
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" ><br>
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" ><br>
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                </div>
+
+            </div>
+
+        </div>
+        <div class="container">
+            <h1 class="title">STARTER FIT</h1><br>
+            <div class="perfil">
+                <div class="info">
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" ><br>
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" ><br>
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                    <input type="text" placeholder="" >
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <a href="{% url 'pago' %}"><button type="button" class="btn btn-light" >PAGAR</button></a>
+        </div>
+
+    </div>
+        <div class="logoculturista">
+            <img src=" {% static 'fitplace/img/culturista.png' %}"  alt="culturista.png">
+        </div>
+        
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+</body> 
+</html>

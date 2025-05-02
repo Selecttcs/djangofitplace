@@ -1,0 +1,92 @@
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+
+    <title>FitPlace-Rutinas</title>
+</head>
+<body>
+    <div class="header">
+        
+        <img src=" {% static 'fitplace/img/logofit.png' %}"alt="fitPLaceLOGO" class="logo">
+        <div style="margin-left: auto; margin-right: 20px; display: flex;">
+            <a href="{% url 'retroalimentacion' %}"><img src=" {% static 'fitplace/img/retroalimentacion.png' %}" alt="retroalimentacion.png" style="width: 80px; margin-right: 30px;" ></a>
+            <a href="{% url 'principal' %}"><img src=" {% static 'fitplace/img/volver.png' %}" alt="volver.png"class="logo-volver"></a>
+        </div>
+            
+    </div>
+    <div class="body">
+        <h1 class="title">RUTINAS</h1>
+        <div class="container">
+            <table >
+                <thead>
+                  <tr style="color: #000000;">
+                    <th>Lunes</th>
+                    <th>Martes</th>
+                    <th>Miércoles</th>
+                    <th>Jueves</th>
+                    <th>Viernes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                  </tr>
+                  <tr>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                  </tr>
+                  <tr>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                  </tr>
+                  <tr>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                  </tr>
+                  <tr>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                    <td><input type="text" readonly></td>
+                  </tr>
+                </tbody>
+              </table>
+        </div>
+
+        <div class="container">
+            <h2 style="color: #ffffff;">¿No tienes una rutina?</h2>
+            <h3 style="color: #ffffff;">¡Generemos una!</h3>
+            <div class="btns">
+                <button type="button" class="btn btn-light " >Ganar musculo <input type="checkbox"></button><br>
+                <button type="button" class="btn btn-light boton">Mantener peso  <input type="checkbox"></button><br>
+                <button type="button" class="btn btn-light boton">Perder peso  <input type="checkbox"></button>
+                
+            </div>
+            <div><button type="button" class="btn btn-light boton">Generar rutina</button></div>
+
+
+        </div>
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+</body> 
+</html>
