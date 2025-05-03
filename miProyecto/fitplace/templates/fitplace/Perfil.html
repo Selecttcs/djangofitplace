@@ -26,7 +26,29 @@
             
     </div>
     <div class="body">
-        
+        <h2>Perfil de Usuario</h2>
+
+        {% if usuarios %}
+            <h2>Lista de Usuarios</h2>
+            <ul>
+            {% for usuario in usuarios %}
+                <li>ID: {{ usuario.id }}, Nombre: {{ usuario.nombre }}, Correo: {{ usuario.correo }}</li>
+            {% endfor %}
+            </ul>
+        {% elif usuario %}
+            <h2>Perfil de Usuario</h2>
+            <p style="color: green;">Datos cargados correctamente.</p>
+            <p><strong>ID:</strong> {{ usuario.id }}</p>
+            <p><strong>Nombre completo:</strong> {{ usuario.nombre }}</p>
+            <p><strong>Edad:</strong> {{ usuario.edad }}</p>
+            <p><strong>Sexo:</strong> {{ usuario.sexo }}</p>
+            <p><strong>Estatura:</strong> {{ usuario.estatura }}</p>
+            <p><strong>Peso:</strong> {{ usuario.peso }}</p>
+            <p><strong>Correo:</strong> {{ usuario.correo }}</p>
+        {% else %}
+            <p style="color: red;">No se encontraron usuarios.</p>
+        {% endif %}
+
         <h1 class="title">PERFIL</h1>
         <div class="container">
             <div class="perfil">

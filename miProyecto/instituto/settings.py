@@ -79,7 +79,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.oracle',
         'NAME': 'localhost:1521/XEPDB1',  # o 'XE'
         'USER': 'SYSTEM',
-        'PASSWORD': 'SYSTEM',
+        'PASSWORD': 'SYS123',
     }
 }
 
