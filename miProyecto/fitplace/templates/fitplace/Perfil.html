@@ -1,4 +1,4 @@
-{%load static%}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,76 +6,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
-
     <title>FitPlace-Perfil</title>
 </head>
 <body>
     <div class="header">
-        
-        <img src=" {% static 'fitplace/img/logofit.png' %}"  alt="fitPLaceLOGO" class="logo">
+        <img src="{% static 'fitplace/img/logofit.png' %}" alt="fitPLaceLOGO" class="logo">
         <a href="{% url 'planes' %}"><button type="button" class="btn btn-dark" data-bs-dismiss="modal">Planes</button></a>
   
         <div style="margin-left: auto; padding: 20px; display: flex;">
-            <a href="{% url 'cambiarcredenciales' %}"><img src=" {% static 'fitplace/img/editar.png' %}"  alt="" style="width: 80px; margin-right: 20px;"></a>
-            <a href="{% url 'objetivos' %}"><img src=" {% static 'fitplace/img/objetivo.png' %}"  alt="objetivos.png" class="img-obj"></a>
-            
+            <a href="{% url 'cambiarcredenciales' %}"><img src="{% static 'fitplace/img/editar.png' %}" alt="" style="width: 80px; margin-right: 20px;"></a>
+            <a href="{% url 'objetivos' %}"><img src="{% static 'fitplace/img/objetivo.png' %}" alt="objetivos.png" class="img-obj"></a>
         </div>
         <div>
-            <a href="{% url 'principal' %}"><img src=" {% static 'fitplace/img/volver.png' %}"  alt="" class="imgsalir"></a>
+            <a href="{% url 'principal' %}"><img src="{% static 'fitplace/img/volver.png' %}" alt="" class="imgsalir"></a>
         </div>
-            
     </div>
     <div class="body">
-        <h2>Perfil de Usuario</h2>
-
-        {% if usuarios %}
-            <h2>Lista de Usuarios</h2>
-            <ul>
-            {% for usuario in usuarios %}
-                <li>ID: {{ usuario.id }}, Nombre: {{ usuario.nombre }}, Correo: {{ usuario.correo }}</li>
-            {% endfor %}
-            </ul>
-        {% elif usuario %}
-            <h2>Perfil de Usuario</h2>
-            <p style="color: green;">Datos cargados correctamente.</p>
-            <p><strong>ID:</strong> {{ usuario.id }}</p>
-            <p><strong>Nombre completo:</strong> {{ usuario.nombre }}</p>
-            <p><strong>Edad:</strong> {{ usuario.edad }}</p>
-            <p><strong>Sexo:</strong> {{ usuario.sexo }}</p>
-            <p><strong>Estatura:</strong> {{ usuario.estatura }}</p>
-            <p><strong>Peso:</strong> {{ usuario.peso }}</p>
-            <p><strong>Correo:</strong> {{ usuario.correo }}</p>
-        {% else %}
-            <p style="color: red;">No se encontraron usuarios.</p>
-        {% endif %}
-
         <h1 class="title">PERFIL</h1>
         <div class="container">
             <div class="perfil">
                 <div class="perfilFoto">
-                    <img src=" {% static 'fitplace/img/usuario.png' %}" alt="" style="width: 100px;">
+                    <img src="{% static 'fitplace/img/usuario.png' %}" alt="" style="width: 100px;">
                 </div>
                 <div>
-                    <input type="text" placeholder="Usuario" id="nombre"><br><br>
-                    <input type="text" placeholder="Gmail" id="correo"><br><br>
+                    <input type="text" placeholder="Usuario" id="nombre" value="{{ nombre }}" disabled><br><br>
+                    <input type="text" placeholder="Gmail" id="correo" value="{{ correo }}" disabled><br><br>
                 </div>
                 <div class="info">
-                    <input type="text" placeholder="Peso" id="peso">
-                    <input type="text" placeholder="Estatura" id="estatura"><br>
-                    <input type="text" placeholder="Edad" id="edad">
-                    <input type="text" placeholder="Género" id="genero"><br>
-                    <input type="text" placeholder="Frecuencia de entrenamiento" id="fec_entrenamiento">
-                    <input type="text" placeholder="Nivel de Atleta" id="nvAtleta">
+                    <input type="text" placeholder="Peso" id="peso" value="{{ peso }}" disabled>
+                    <input type="text" placeholder="Estatura" id="estatura" value="{{ estatura }}" disabled><br>
+                    <input type="text" placeholder="Edad" id="edad" value="{{ edad }}" disabled>
+                    <input type="text" placeholder="Género" id="genero" value="{{ genero }}" disabled><br>
                 </div>
-
             </div>
-
         </div>
     </div>
-        <div class="logoculturista">
-            <img src=" {% static 'fitplace/img/culturista.png' %}" alt="culturista.png">
-        </div>
-        
+    <div class="logoculturista">
+        <img src="{% static 'fitplace/img/culturista.png' %}" alt="culturista.png">
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
 </body> 

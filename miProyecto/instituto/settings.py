@@ -74,15 +74,17 @@ WSGI_APPLICATION = 'instituto.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+import os
+os.environ["TNS_ADMIN"] = r"C:\WALLET"
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.oracle',
-        'NAME': 'localhost:1521/XEPDB1',  # o 'XE'
-        'USER': 'SYSTEM',
-        'PASSWORD': 'SYS123',
+        'NAME': 'bdfitplace_high',  # Usa _high, _medium o _low
+        'USER': 'ADMIN',  # o el usuario que tengas creado
+        'PASSWORD': 'DCerda123Despinosa',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
