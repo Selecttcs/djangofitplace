@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import connection
 from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import make_password
 # Create your views here.
 import time
 
@@ -88,13 +89,47 @@ def principal(request):
     return render(request,'fitplace/Principal.html', context)    
     
 def comunidad(request):
-    context={}
+    #Aqui rescatamos la data de la base de datos de la tabla publicacion
+    with connection.cursor() as cursor:
+        cursor.execute("""SELECT TITULO, MENSAJE FROM ADMIN.PUBLICACION""")
+        publicacion = cursor.fetchall()
+
+    context={'publicacion': publicacion
+    }
+
+    # Aquí enviamos con el metodo post la publicacion a la base de datos
+    if request.method == "POST":
+        titulo = request.POST.get('titulo')
+        mensaje = request.POST.get('mensaje')
+        print(f"POST recibido: Titulo: {titulo}, Mensaje: {mensaje}")
+
+        try:
+            cursor = connection.cursor()
+            cursor.execute("""
+                INSERT INTO ADMIN.PUBLICACION (TITULO, MENSAJE)
+                VALUES (%s, %s)
+            """, [titulo, mensaje])
+            cursor.close()
+            print("Publicación subida correctamente.")
+
+            # Mostrar mensaje de éxito
+            messages.success(request, "Publicación subida correctamente.")
+            return redirect('comunidad')
+        
+        except Exception as e:
+            # Depuración: Mostrar el error en consola si ocurre
+            print(f"Error al querer subir una publicacion: {e}")  # Depuración
+            messages.error(request, f"Error al querer subir una publicacion: {e}")
+            return redirect('comunidad')
+
+
+
     return render(request,'fitplace/Comunidad.html', context)   
 
 def rutinas(request):
     # Realizamos la consulta a la base de datos para obtener los ejercicios
     with connection.cursor() as cursor:
-        cursor.execute("""SELECT NOMBRE_EJERCICIO, DESCRIPCION, TIPO_EJERCICIO FROM ADMIN.EJERCICIO""")  # Cambia esto a tu tabla y columna real
+        cursor.execute("""SELECT NOMBRE_EJERCICIO, DESCRIPCION, TIPO_EJERCICIO FROM ADMIN.EJERCICIO""")
         ejercicios = cursor.fetchall()
 
     # Pasamos los ejercicios al contexto
@@ -144,8 +179,65 @@ def perfil(request):
 
 
 def cambiarcredenciales(request):
-    context={}
-    return render(request,'fitplace/CambiarCredenciales.html', context)  
+
+    usuario_id = request.session.get('user_id')
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT CORREO_ELECTRONICO 
+            FROM "ADMIN"."USUARIO" 
+            WHERE ID_USUARIO = :usuario_id
+        """, {'usuario_id': usuario_id})
+        correo_electronico = cursor.fetchone()[0]  
+
+    if request.method == "POST":
+        nombre = request.POST.get('nombre')
+        nueva_contrasena = request.POST.get('nueva_contrasena')
+        confirmar_contrasena = request.POST.get('confirmar_contrasena')
+        usuario_id = request.session.get('user_id')
+
+        # Verificar si las contraseñas coinciden
+        if nueva_contrasena != confirmar_contrasena:
+            messages.error(request, "Las contraseñas no coinciden.")
+            return redirect('cambiarcredenciales')
+
+        try:
+            # Crear la consulta para actualizar el nombre y la contraseña
+            with connection.cursor() as cursor:
+                if nombre and nueva_contrasena:
+                    # Si ambos nombre y contraseña son proporcionados, actualizamos ambos
+                    cursor.execute("""
+                        UPDATE "ADMIN"."USUARIO"
+                        SET NOMBRE_COMPLETO = :nombre, CONTRASENA = :nueva_contrasena
+                        WHERE ID_USUARIO = :usuario_id
+                    """, {'nombre': nombre, 'nueva_contrasena': nueva_contrasena, 'usuario_id': usuario_id})
+                elif nombre:
+                    # Si solo el nombre es proporcionado, actualizamos solo el nombre
+                    cursor.execute("""
+                        UPDATE "ADMIN"."USUARIO"
+                        SET NOMBRE_COMPLETO = :nombre
+                        WHERE ID_USUARIO = :usuario_id
+                    """, {'nombre': nombre, 'usuario_id': usuario_id})
+                elif nueva_contrasena:
+                    # Si solo la contraseña es proporcionada, actualizamos solo la contraseña
+                    cursor.execute("""
+                        UPDATE "ADMIN"."USUARIO"
+                        SET CONTRASENA = :nueva_contrasena
+                        WHERE ID_USUARIO = :usuario_id
+                    """, {'nueva_contrasena': nueva_contrasena, 'usuario_id': usuario_id})
+
+            # Mensaje de éxito
+            messages.success(request, "¡Sus credenciales han sido modificadas correctamente!")
+            return redirect('perfil')
+
+        except Exception as e:
+            messages.error(request, f"Error al cambiar las credenciales: {e}")
+            return redirect('cambiarcredenciales')
+
+    context = {
+        'correo': correo_electronico
+    }
+    return render(request, 'fitplace/CambiarCredenciales.html', context)
+
 
 def objetivos(request):
     context={}

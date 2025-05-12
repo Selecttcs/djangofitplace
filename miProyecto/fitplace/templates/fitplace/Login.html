@@ -45,9 +45,17 @@
                     <button type="submit" style="margin-left: 50px;" class="btn btn-dark">Ingresar</button>
                 </form>
                 {% if messages %}
-                {% for message in messages %}
-                    <p style="color:red;">{{ message }}</p>
-                {% endfor %}
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        {% for message in messages %}
+                            Swal.fire({
+                                icon: "{{ message.tags }}",  // 'error', 'success', etc.
+                                title: "{{ message|escapejs }}",
+                                confirmButtonText: 'OK'
+                            });
+                        {% endfor %}
+                    });
+                </script>
                 {% endif %}
             </div>
         </div>    

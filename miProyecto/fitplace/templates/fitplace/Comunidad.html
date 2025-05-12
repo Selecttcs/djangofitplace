@@ -25,6 +25,20 @@
             <button type="button" class="btn btn-dark "  data-bs-toggle="modal" data-bs-target="#staticBackdrop">Realizar publicación</button><br>
 
         </div>
+        <div class="container mt-4">
+            {% for pub in publicacion %}
+            <div class="card mb-3" style="width: 100%; max-width: 600px; margin: 0 auto;">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ pub.0 }}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ pub.1 }}</p>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-center">No hay publicaciones disponibles.</p>
+            {% endfor %}
+        </div>
         <img src=" {% static 'fitplace/img/eslogancomunidad.png' %}" alt="motivación.png" style="display:flex; justify-content: center; align-items: center; margin-left:auto; margin-right:auto; margin-top:80px;">
 
       
@@ -41,20 +55,22 @@
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                  <div class="input-group input-group-lg">
-                    <span class="input-group-text" id="inputGroup-sizing-lg">Mensaje</span>
-                    <input type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-lg">
-                    <p>     </p>
-                    <div class="input-group mb-3" style="margin-top: 50px;">
-                      <label class="input-group-text" for="inputGroupFile01">Imagen</label>
-                      <input type="file" class="form-control" id="inputGroupFile01">
+                  <form method="POST" action="{% url 'comunidad' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                      <strong><label for="recipient-name" class="col-form-label">Título</label></strong>
+                      <input type="text" class="form-control" id="titulo" name="titulo">
                     </div>
-                  </div>
+                    <div class="mb-3">
+                      <strong><label for="message-text" class="col-form-label">Mensaje:</label></strong>
+                      <textarea class="form-control" id="mensaje" name="mensaje"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="submit" class="btn btn-dark"data-bs-dismiss="modal">Publicar</button>
+                    </div>
+                  </form>
                 </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cerrar</button>
-                  <button type="button" class="btn btn-dark">Publicar</button>
-                </div>
+
               </div>
             </div>
           </div>
