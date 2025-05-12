@@ -35,38 +35,44 @@ def login(request):
 def crear_cuenta(request):
     if request.method == "POST":
         # Recoger datos del formulario
-        nombre = request.POST.get('nombre')
-        correo = request.POST.get('correo')
+        nombre_completo = request.POST.get('nombre')
+        correo_electronico = request.POST.get('correo')
         contrasena = request.POST.get('contrasena')
         confirmar_contrasena = request.POST.get('confirmar_contrasena')
         edad = request.POST.get('edad')
         peso = request.POST.get('peso')
         estatura = request.POST.get('estatura')
-        genero = request.POST.get('genero')
+        sexo = request.POST.get('sexo')
+
+        # Depuración: Ver los datos recibidos del formulario
+        print(f"POST recibido: Nombre_completo: {nombre_completo}, Correo: {correo_electronico}, Contraseña: {contrasena}, Edad: {edad}, Peso: {peso}, Estatura: {estatura}, Sexo: {sexo}")
 
         # Validar que las contraseñas coincidan
         if contrasena != confirmar_contrasena:
             messages.error(request, "Las contraseñas no coinciden.")
             return redirect('crearcuenta')
 
-        # Crear el insert a la base de datos
+        # Intentar realizar el insert a la base de datos
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                INSERT INTO USUARIO (NOMBRE, CORREO, CONTRASENA, EDAD, PESO, ESTATURA, GENERO)
+                INSERT INTO USUARIO (NOMBRE_COMPLETO, CORREO_ELECTRONICO, CONTRASENA, EDAD, PESO, ESTATURA, SEXO)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, [nombre, correo, contrasena, edad, peso, estatura, genero])
+            """, [nombre_completo, correo_electronico, contrasena, edad, peso, estatura, sexo])
             cursor.close()
+            print("Cuenta creada exitosamente.")
 
             # Mostrar mensaje de éxito
             messages.success(request, "Cuenta creada exitosamente.")
             return redirect('login')
         
         except Exception as e:
-            # Manejar cualquier error con la base de datos
+            # Depuración: Mostrar el error en consola si ocurre
+            print(f"Error al crear la cuenta: {e}")  # Depuración
             messages.error(request, f"Hubo un error al crear la cuenta: {e}")
-            return redirect('CrearCuenta')
+            return redirect('crearcuenta')
 
+    # Si el método no es POST, mostrar el formulario de creación de cuenta
     return render(request, 'fitplace/CrearCuenta.html')
     
 def recuperarpass(request):
@@ -86,8 +92,17 @@ def comunidad(request):
     return render(request,'fitplace/Comunidad.html', context)   
 
 def rutinas(request):
-    context={}
-    return render(request,'fitplace/Rutinas.html', context)   
+    # Realizamos la consulta a la base de datos para obtener los ejercicios
+    with connection.cursor() as cursor:
+        cursor.execute("""SELECT NOMBRE_EJERCICIO, DESCRIPCION, TIPO_EJERCICIO FROM ADMIN.EJERCICIO""")  # Cambia esto a tu tabla y columna real
+        ejercicios = cursor.fetchall()
+
+    # Pasamos los ejercicios al contexto
+    context = {
+        'ejercicios': ejercicios
+    }
+
+    return render(request, 'fitplace/Rutinas.html', context)
     
 def retroalimentacion(request):
     context={}
