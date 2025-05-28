@@ -56,7 +56,12 @@
                     <input type="text" name="estatura" id="estatura" placeholder="Ingrese su estatura" required><br>
 
                     <label for="genero">Género</label><br>
-                    <input type="text" name="genero" id="sexo" placeholder="Ingrese su género" required><br>
+                    <select name="sexo" id="sexo" required>
+                        <option value="" disabled selected>Seleccione su género</option>
+                        <option value="M">Masculino</option>
+                        <option value="F">Femenino</option>
+                        <!-- Si quieres agregar más opciones, aquí las puedes poner -->
+                    </select><br>
                     <br>
                     <button type="submit" class="btn btn-dark">CREAR CUENTA</button>
                 </form>

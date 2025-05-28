@@ -23,20 +23,45 @@
     </div>
     <div class="body">
         <h1 class="title">PERFIL</h1>
-        <div class="container">
-            <div class="perfil">
-                <div class="perfilFoto">
-                    <img src="{% static 'fitplace/img/usuario.png' %}" alt="" style="width: 100px;">
+        <div class="container" style="max-width: 700px; margin: 0 auto; color: white; display: flex; gap: 40px;">
+            <div class="perfilFoto" style="flex: 0 0 150px; text-align: center;">
+                <img src="{% static 'fitplace/img/usuario.png' %}" alt="Foto de usuario" style="width: 120px; border-radius: 50%; margin-bottom: 20px;">
+            </div>
+
+            <div class="info" style="flex: 1; display: flex; flex-wrap: wrap; gap: 20px;">
+                <div style="flex: 1 1 45%;">
+                    <label for="nombre" style="font-weight: bold;">Usuario</label><br>
+                    <input type="text" id="nombre" value="{{ nombre }}" readonly style="width: 100%; padding: 8px;">
                 </div>
-                <div>
-                    <input type="text" placeholder="Usuario" id="nombre" value="{{ nombre }}" readonly><br><br>
-                    <input type="text" placeholder="Gmail" id="correo" value="{{ correo }}" readonly><br><br>
+
+                <div style="flex: 1 1 45%;">
+                    <label for="correo" style="font-weight: bold;">Correo</label><br>
+                    <input type="text" id="correo" value="{{ correo }}" readonly style="width: 100%; padding: 8px;">
                 </div>
-                <div class="info">
-                    <input type="text" placeholder="Peso" id="peso" value="{{ peso }}" readonly>
-                    <input type="text" placeholder="Estatura" id="estatura" value="{{ estatura }}" readonly><br>
-                    <input type="text" placeholder="Edad" id="edad" value="{{ edad }}" readonly>
-                    <input type="text" placeholder="Género" id="genero" value="{{ genero }}" readonly><br>
+
+                <div style="flex: 1 1 45%;">
+                    <label for="peso" style="font-weight: bold;">Peso (kg)</label><br>
+                    <input type="text" id="peso" value="{{ peso }}" readonly style="width: 100%; padding: 8px;">
+                </div>
+
+                <div style="flex: 1 1 45%;">
+                    <label for="estatura" style="font-weight: bold;">Estatura (m)</label><br>
+                    <input type="text" id="estatura" value="{{ estatura }}" readonly style="width: 100%; padding: 8px;">
+                </div>
+
+                <div style="flex: 1 1 45%;">
+                    <label for="edad" style="font-weight: bold;">Edad</label><br>
+                    <input type="text" id="edad" value="{{ edad }}" readonly style="width: 100%; padding: 8px;">
+                </div>
+
+                <div style="flex: 1 1 45%;">
+                    <label for="genero" style="font-weight: bold;">Género</label><br>
+                    <input type="text" id="genero" value="{{ genero }}" readonly style="width: 100%; padding: 8px;">
+                </div>
+
+                <div style="flex: 1 1 100%;">
+                    <label for="objetivo" style="font-weight: bold;">Objetivo</label><br>
+                    <input type="text" id="objetivo" value="{{ objetivo }}" readonly style="width: 100%; padding: 8px;">
                 </div>
             </div>
         </div>

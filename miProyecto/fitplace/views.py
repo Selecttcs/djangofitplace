@@ -43,7 +43,7 @@ def crear_cuenta(request):
         edad = request.POST.get('edad')
         peso = request.POST.get('peso')
         estatura = request.POST.get('estatura')
-        sexo = request.POST.get('sexo')
+        sexo = request.POST.get('sexo')  # Se asegura que sea 'sexo' para que coincida con el form
 
         # Depuración: Ver los datos recibidos del formulario
         print(f"POST recibido: Nombre_completo: {nombre_completo}, Correo: {correo_electronico}, Contraseña: {contrasena}, Edad: {edad}, Peso: {peso}, Estatura: {estatura}, Sexo: {sexo}")
@@ -51,6 +51,11 @@ def crear_cuenta(request):
         # Validar que las contraseñas coincidan
         if contrasena != confirmar_contrasena:
             messages.error(request, "Las contraseñas no coinciden.")
+            return redirect('crearcuenta')
+
+        # Validar que sexo tenga un valor válido
+        if not sexo or sexo not in ['M', 'F', 'O']:  # Ajusta según los valores permitidos en tu select
+            messages.error(request, "Debe seleccionar un género válido.")
             return redirect('crearcuenta')
 
         # Intentar realizar el insert a la base de datos
@@ -63,17 +68,14 @@ def crear_cuenta(request):
             cursor.close()
             print("Cuenta creada exitosamente.")
 
-            # Mostrar mensaje de éxito
             messages.success(request, "Cuenta creada exitosamente.")
             return redirect('login')
-        
+
         except Exception as e:
-            # Depuración: Mostrar el error en consola si ocurre
-            print(f"Error al crear la cuenta: {e}")  # Depuración
+            print(f"Error al crear la cuenta: {e}")
             messages.error(request, f"Hubo un error al crear la cuenta: {e}")
             return redirect('crearcuenta')
 
-    # Si el método no es POST, mostrar el formulario de creación de cuenta
     return render(request, 'fitplace/CrearCuenta.html')
     
 def recuperarpass(request):
@@ -91,7 +93,7 @@ def principal(request):
 def comunidad(request):
     #Aqui rescatamos la data de la base de datos de la tabla publicacion
     with connection.cursor() as cursor:
-        cursor.execute("""SELECT TITULO, MENSAJE FROM ADMIN.PUBLICACION""")
+        cursor.execute("""SELECT TITULO, MENSAJE, FECHA FROM ADMIN.PUBLICACION ORDER BY FECHA DESC""")
         publicacion = cursor.fetchall()
 
     context={'publicacion': publicacion
@@ -106,8 +108,8 @@ def comunidad(request):
         try:
             cursor = connection.cursor()
             cursor.execute("""
-                INSERT INTO ADMIN.PUBLICACION (TITULO, MENSAJE)
-                VALUES (%s, %s)
+                INSERT INTO ADMIN.PUBLICACION (TITULO, MENSAJE, FECHA)
+                VALUES (%s, %s, SYSDATE)
             """, [titulo, mensaje])
             cursor.close()
             print("Publicación subida correctamente.")
@@ -144,38 +146,123 @@ def retroalimentacion(request):
     return render(request,'fitplace/retroalimentacion.html', context)   
 
 def nutricion(request):
-    context={}
-    return render(request,'fitplace/nutricion.html', context)  
+    usuario_id = request.session.get('user_id')
 
-def perfil(request):
-    # Obtener el ID del usuario actualmente logueado (o el que se usó para iniciar sesión)
-    usuario_id = request.session.get('user_id')  # Asegúrate de que 'user_id' esté en la sesión tras el login
-
-    # Realizar la consulta para obtener los datos del perfil
     with connection.cursor() as cursor:
         cursor.execute("""
-            SELECT NOMBRE_COMPLETO, CORREO_ELECTRONICO, PESO, ESTATURA, EDAD, SEXO
-            FROM ADMIN.USUARIO 
+            SELECT EDAD, ESTATURA, PESO, SEXO, OBJETIVO
+            FROM ADMIN.USUARIO
             WHERE ID_USUARIO = :id_usuario
         """, {'id_usuario': usuario_id})
-        
-        # Obtener los datos del usuario
         user_data = cursor.fetchone()
 
     if user_data:
-        # Si encontramos los datos del usuario, pasarlos al contexto
+        edad = int(user_data[0])
+        estatura_metros = float(user_data[1])  # en metros
+        peso = float(user_data[2])             # en kg
+        sexo = user_data[3]
+        objetivo = user_data[4] or ''          # puede ser None
+
+        estatura_cm = estatura_metros * 100
+
+        # Fórmula Harris-Benedict para TMB
+        if sexo.upper() == 'M':
+            tmb = 10 * peso + 6.25 * estatura_cm - 5 * edad + 5
+        else:
+            tmb = 10 * peso + 6.25 * estatura_cm - 5 * edad - 161
+
+        # Ajuste de actividad moderada
+        calorias_base = tmb * 1.55
+
+        # Ajustar calorías y macros según objetivo
+        objetivo = objetivo.lower()
+        proteina_extra = 0
+        ajuste_calorias = 0
+
+        if 'masa muscular' in objetivo:
+            ajuste_calorias = 1.20  # +20%
+            proteina_extra = 0.5    # +0.5 g/kg proteína
+        elif 'perdida' in objetivo or 'grasa' in objetivo:
+            ajuste_calorias = 0.80  # -20%
+            proteina_extra = 0.5
+        elif 'fuerza' in objetivo:
+            ajuste_calorias = 1.15  # +15%
+            proteina_extra = 0.4
+        elif 'flexibilidad' in objetivo:
+            ajuste_calorias = 1.0   # mantenimiento
+            proteina_extra = 0.2
+        else:
+            ajuste_calorias = 1.0   # por defecto mantenimiento
+
+        calorias = calorias_base * ajuste_calorias
+        proteinas = peso * (2 + proteina_extra)  # base 2g/kg + extra según objetivo
+        grasas = peso * 1   # constante para simplicidad
+        calorias_proteina = proteinas * 4
+        calorias_grasa = grasas * 9
+        carbohidratos = (calorias - (calorias_proteina + calorias_grasa)) / 4
+
+        vitaminas_mg = {
+            "Vitamina A": 900 if sexo.upper() == 'M' else 700,
+            "Vitamina C": 90 if sexo.upper() == 'M' else 75,
+            "Vitamina D": 20,
+            "Vitamina E": 15,
+        }
+
         context = {
-            'nombre': user_data[0],
-            'correo': user_data[1],
-            'peso': user_data[2],
-            'estatura': user_data[3],
-            'edad': user_data[4],
-            'genero': user_data[5],
+            'calorias': f"{round(calorias)} kcal",
+            'grasas': f"{round(grasas)} g",
+            'proteinas': f"{round(proteinas)} g",
+            'carbohidratos': f"{round(carbohidratos)} g",
+            'vitaminas': vitaminas_mg,
+            'objetivo': objetivo.title() if objetivo else 'No definido',
         }
     else:
         context = {}
 
-    return render(request, 'fitplace/perfil.html', context)
+    return render(request, 'fitplace/nutricion.html', context)
+
+
+def perfil(request):
+    usuario_id = request.session.get('user_id')
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT NOMBRE_COMPLETO, CORREO_ELECTRONICO, PESO, ESTATURA, EDAD, SEXO, OBJETIVO
+            FROM ADMIN.USUARIO
+            WHERE ID_USUARIO = :id_usuario
+        """, {'id_usuario': usuario_id})
+        user_data = cursor.fetchone()
+
+    if user_data:
+        nombre = user_data[0]
+        correo = user_data[1]
+        peso = user_data[2]
+        estatura = user_data[3]
+        edad = user_data[4]
+        sexo = user_data[5]
+        objetivo = user_data[6]  # Asegúrate que tienes ese campo en la tabla
+
+        # Convertir sexo 'M' o 'F' a texto
+        if sexo.upper() == 'M':
+            genero_texto = 'Masculino'
+        elif sexo.upper() == 'F':
+            genero_texto = 'Femenino'
+        else:
+            genero_texto = 'Otro'
+
+        context = {
+            'nombre': nombre,
+            'correo': correo,
+            'peso': peso,
+            'estatura': estatura,
+            'edad': edad,
+            'genero': genero_texto,
+            'objetivo': objetivo if objetivo else 'No definido'
+        }
+    else:
+        context = {}
+
+    return render(request, 'fitplace/Perfil.html', context)
 
 
 def cambiarcredenciales(request):
@@ -240,8 +327,29 @@ def cambiarcredenciales(request):
 
 
 def objetivos(request):
-    context={}
-    return render(request,'fitplace/Objetivos.html', context)  
+    if request.method == "POST":
+        objetivo = request.POST.get("objetivo")
+        usuario_id = request.session.get('user_id')
+
+        if usuario_id and objetivo:
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE USUARIO
+                        SET OBJETIVO = :objetivo
+                        WHERE ID_USUARIO = :usuario_id
+                    """, {'objetivo': objetivo, 'usuario_id': usuario_id})
+                messages.success(request, "Objetivo guardado correctamente.")
+            except Exception as e:
+                print("Error al guardar objetivo:", e)
+                messages.error(request, "Ocurrió un error al guardar tu objetivo.")
+        else:
+            messages.error(request, "Por favor selecciona un objetivo.")
+
+        return redirect('objetivos')  # O a donde quieras redirigir tras guardar
+
+    # Si es GET, solo renderiza la página con el form
+    return render(request, 'fitplace/Objetivos.html')
 
 def planes(request):
     context={}

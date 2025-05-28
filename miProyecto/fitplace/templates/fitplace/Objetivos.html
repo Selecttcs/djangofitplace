@@ -21,16 +21,19 @@
     <div class="body">
         <h1 class="title">OBJETIVOS</h1>
         <div class="container">
-            <div class="perfil">
-
-                <div class="info">
-                    <input type="text" placeholder="Masa muscular" id="1" readonly><input type="checkbox" class="check" id="1"><br>
-                    <input type="text" placeholder="Perdida de grasa" id="2" readonly><input type="checkbox" class="check" id="2"><br>
-                    <input type="text" placeholder="Aumento de fuerza" id="3" readonly><input type="checkbox" class="check" id="3"><br>
-                    <input type="text" placeholder="Flexibilidad" id="4" readonly><input type="checkbox" class="check" id="4"><br>
-
-                </div>
-            </div>
+            <form method="POST" action="{% url 'objetivos' %}">
+                {% csrf_token %}
+                <label for="objetivo" style="color: white;">Selecciona tu objetivo:</label>
+                <select name="objetivo" id="objetivo" class="form-select" required>
+                    <option value="">-- Selecciona una opción --</option>
+                    <option value="Masa muscular">Masa muscular</option>
+                    <option value="Pérdida de grasa">Pérdida de grasa</option>
+                    <option value="Aumento de fuerza">Aumento de fuerza</option>
+                    <option value="Flexibilidad">Flexibilidad</option>
+                </select>
+                <br><br>
+                <button type="submit" class="btn btn-dark">Guardar objetivo</button>
+            </form>
         </div>
 
 
