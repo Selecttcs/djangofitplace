@@ -20,22 +20,22 @@
     </div>
     <div class="body">
         <h1 class="title">OBJETIVOS</h1>
-<div class="container my-4" style="max-width: 400px;">
-    <form method="POST" action="{% url 'objetivos' %}">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="objetivo" class="form-label text-white fw-bold">Selecciona tu objetivo:</label>
-            <select name="objetivo" id="objetivo" class="form-select" required>
-                <option value="" selected>-- Selecciona una opción --</option>
-                <option value="Masa muscular">Masa muscular</option>
-                <option value="Pérdida de grasa">Pérdida de grasa</option>
-                <option value="Aumento de fuerza">Aumento de fuerza</option>
-                <option value="Flexibilidad">Flexibilidad</option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-dark w-100">Guardar objetivo</button>
-    </form>
-</div>
+    <div class="container my-4" style="max-width: 400px;">
+        <form method="POST" action="{% url 'objetivos' %}">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="objetivo" class="form-label text-white fw-bold">Selecciona tu objetivo:</label>
+                <select name="objetivo" id="objetivo" class="form-select" required>
+                    <option value="" selected>-- Selecciona una opción --</option>
+                    <option value="Masa muscular">Masa muscular</option>
+                    <option value="Pérdida de grasa">Pérdida de grasa</option>
+                    <option value="Aumento de fuerza">Aumento de fuerza</option>
+                    <option value="Flexibilidad">Flexibilidad</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-dark w-100">Guardar objetivo</button>
+        </form>
+    </div>
 
 
         <div class="logoculturista">

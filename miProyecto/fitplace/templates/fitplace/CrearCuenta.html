@@ -25,49 +25,68 @@
     <div class="header">
         <img src="{% static 'fitplace/img/logofit.png' %}" alt="fitPLaceLOGO" class="logo">
         <div style="margin-left: auto; margin-right: 20px;">
-            <a href="index.html"><button type="button" class="btn btn-light">Volver</button></a>
+            <a href="{% url 'index' %}"><button type="button" class="btn btn-light">Volver</button></a>
         </div>        
     </div>
     <div class="body">
-        <div class="login">
-            <div class="container">
-                <h1 class="title">Registro</h1>
+        <div class="login d-flex justify-content-center align-items-center">
+            <div class="container my-5" style="max-width: 700px;   background-color: #1e1e1e; opacity: 0.8;">
+                <h1 class="title text-center mb-4">Registro</h1>
                 <form method="POST" action="{% url 'crearcuenta' %}">
                     {% csrf_token %}
-                    <label for="nombre">Nombre Completo</label><br>
-                    <input type="text" name="nombre" id="nombre" placeholder="Ingrese su nombre" required><br>
 
-                    <label for="correo">Correo</label><br>
-                    <input type="email" name="correo" id="correo" placeholder="Ingrese su correo" required><br>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label text-white">Nombre Completo</label>
+                            <input type="text" name="nombre" id="nombre" class="form-control" placeholder="Ingrese su nombre" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="correo" class="form-label text-white">Correo</label>
+                            <input type="email" name="correo" id="correo" class="form-control" placeholder="Ingrese su correo" required>
+                        </div>
+                    </div>
 
-                    <label for="pass">Contraseña</label><br>
-                    <input type="password" name="contrasena" id="contrasena" placeholder="Ingrese su contraseña" required><br>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="contrasena" class="form-label text-white">Contraseña</label>
+                            <input type="password" name="contrasena" id="contrasena" class="form-control" placeholder="Ingrese su contraseña" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="confirmar_pass" class="form-label text-white">Confirmar Contraseña</label>
+                            <input type="password" name="confirmar_contrasena" id="confirmar_pass" class="form-control" placeholder="Confirme su contraseña" required>
+                        </div>
+                    </div>
 
-                    <label for="confirmar_pass">Confirmar Contraseña</label><br>
-                    <input type="password" name="confirmar_contrasena" id="confirmar_pass" placeholder="Confirme su contraseña" required><br>
-                    <br>
-                    <label for="edad">Edad</label><br>
-                    <input type="text" name="edad" id="edad" placeholder="Ingrese su edad" required><br>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="edad" class="form-label text-white">Edad</label>
+                            <input type="text" name="edad" id="edad" class="form-control" placeholder="Edad" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="peso" class="form-label text-white">Peso</label>
+                            <input type="text" name="peso" id="peso" class="form-control" placeholder="Peso" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="estatura" class="form-label text-white">Estatura</label>
+                            <input type="text" name="estatura" id="estatura" class="form-control" placeholder="Estatura" required>
+                        </div>
+                    </div>
 
-                    <label for="peso">Peso</label><br>
-                    <input type="text" name="peso" id="peso" placeholder="Ingrese su peso" required><br>
+                    <div class="mb-4">
+                        <label for="sexo" class="form-label text-white">Género</label>
+                        <select name="sexo" id="sexo" class="form-select" required>
+                            <option value="" disabled selected>Seleccione su género</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                        </select>
+                    </div>
 
-                    <label for="estatura">Estatura</label><br>
-                    <input type="text" name="estatura" id="estatura" placeholder="Ingrese su estatura" required><br>
-
-                    <label for="genero">Género</label><br>
-                    <select name="sexo" id="sexo" required>
-                        <option value="" disabled selected>Seleccione su género</option>
-                        <option value="M">Masculino</option>
-                        <option value="F">Femenino</option>
-                        <!-- Si quieres agregar más opciones, aquí las puedes poner -->
-                    </select><br>
-                    <br>
-                    <button type="submit" class="btn btn-dark">CREAR CUENTA</button>
+                    <button type="submit" class="btn btn-dark w-100">CREAR CUENTA</button>
                 </form>
             </div>
         </div>
     </div>
+
     
     {% if messages %}
     <script>

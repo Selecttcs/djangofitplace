@@ -3,6 +3,11 @@ from django.contrib import messages
 from django.db import connection
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.hashers import make_password
+from django.http import JsonResponse
+from django.http import HttpResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+
 # Create your views here.
 import time
 
@@ -129,17 +134,123 @@ def comunidad(request):
     return render(request,'fitplace/Comunidad.html', context)   
 
 def rutinas(request):
-    # Realizamos la consulta a la base de datos para obtener los ejercicios
-    with connection.cursor() as cursor:
-        cursor.execute("""SELECT NOMBRE_EJERCICIO, DESCRIPCION, TIPO_EJERCICIO FROM ADMIN.EJERCICIO""")
-        ejercicios = cursor.fetchall()
+    usuario_id = request.session.get('user_id')
+    if not usuario_id:
+        return redirect('login')
 
-    # Pasamos los ejercicios al contexto
-    context = {
-        'ejercicios': ejercicios
-    }
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL")
+        esquema_actual = cursor.fetchone()
+        print("Esquema actual:", esquema_actual)
+        cursor.execute("SELECT OBJETIVO FROM ADMIN.USUARIO WHERE ID_USUARIO = :id_usuario", {'id_usuario': usuario_id})
+        resultado = cursor.fetchone()
+    if not resultado:
+        return HttpResponse("Usuario no encontrado", status=404)
+
+    objetivo = resultado[0]
+
+    # Buscar rutina asignada al usuario
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT R.ID_RUTINA, R.NOMBRE_RUTINA
+            FROM ADMIN.RUTINA R
+            JOIN ADMIN.USUARIO_RUTINA UR ON R.ID_RUTINA = UR.ID_RUTINA
+            WHERE UR.ID_USUARIO = :id_usuario
+        """, {'id_usuario': usuario_id})
+        rutina_asignada = cursor.fetchone()
+
+    if rutina_asignada:
+        id_rutina = rutina_asignada[0]
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT E.NOMBRE_EJERCICIO, E.DESCRIPCION, RE.DIA_SEMANA
+                FROM ADMIN.EJERCICIO E
+                JOIN ADMIN.RUTINA_EJERCICIO RE ON E.ID_EJERCICIO = RE.ID_EJERCICIO
+                WHERE RE.ID_RUTINA = :id_rutina
+            """, {'id_rutina': id_rutina})
+            ejercicios = cursor.fetchall()
+
+        # Aseguramos que los días 1 a 5 siempre estén presentes
+        rutina_por_dia = {dia: [] for dia in range(1, 6)}  # lunes a viernes
+
+        for nombre, descripcion, dia in ejercicios:
+            if dia in rutina_por_dia:
+                rutina_por_dia[dia].append({'nombre': nombre, 'descripcion': descripcion})
+
+        # Convertimos dict a lista ordenada para iterar en template sin problemas
+        rutina_por_dia_lista = [(dia, rutina_por_dia[dia]) for dia in range(1, 6)]
+
+        context = {
+            'tiene_rutina': True,
+            'rutina': {'id': id_rutina, 'nombre': rutina_asignada[1]},
+            'rutina_por_dia_lista': rutina_por_dia_lista,
+            'objetivo': objetivo,
+        }
+    else:
+        context = {
+            'tiene_rutina': False,
+            'objetivo': objetivo,
+        }
 
     return render(request, 'fitplace/Rutinas.html', context)
+
+
+@csrf_exempt
+def generar_rutina(request):
+    usuario_id = request.session.get('user_id')
+    if not usuario_id:
+        return JsonResponse({'success': False, 'error': 'Usuario no autenticado'})
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT OBJETIVO FROM ADMIN.USUARIO WHERE ID_USUARIO = :id_usuario", {'id_usuario': usuario_id})
+        resultado = cursor.fetchone()
+
+    if not resultado:
+        return JsonResponse({'success': False, 'error': 'Usuario no encontrado'})
+
+    # Normalizar y mapear objetivo
+    objetivo_raw = resultado[0]
+    objetivo = objetivo_raw.strip().lower()
+
+    print(f"Objetivo recuperado: '{objetivo}'")
+
+    mapeo_objetivos = {
+        'masa muscular': 'masa muscular',
+        'ganar masa muscular': 'masa muscular',
+        'perdida grasa': 'perdida grasa',
+        'pérdida de grasa': 'perdida grasa',
+        'fuerza': 'fuerza',
+        'aumentar fuerza': 'fuerza',
+        'flexibilidad': 'flexibilidad',
+        'mejorar flexibilidad': 'flexibilidad'
+    }
+
+    objetivo_normalizado = mapeo_objetivos.get(objetivo)
+    if not objetivo_normalizado:
+        return JsonResponse({'success': False, 'error': f"Objetivo no válido: {objetivo_raw}"})
+
+    # Buscar una rutina según objetivo
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT ID_RUTINA FROM ADMIN.RUTINA
+            WHERE LOWER(OBJETIVO) = :objetivo
+            FETCH FIRST 1 ROWS ONLY
+        """, {'objetivo': objetivo_normalizado})
+        rutina = cursor.fetchone()
+
+    if not rutina:
+        return JsonResponse({'success': False, 'error': 'No hay rutina para ese objetivo'})
+
+    id_rutina = rutina[0]
+
+    # Asignar rutina al usuario
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO ADMIN.USUARIO_RUTINA (ID_USUARIO, ID_RUTINA)
+            VALUES (:id_usuario, :id_rutina)
+        """, {'id_usuario': usuario_id, 'id_rutina': id_rutina})
+
+    return JsonResponse({'success': True})
     
 def retroalimentacion(request):
     context={}

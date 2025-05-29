@@ -27,29 +27,36 @@
             
     </div>
     <div class="body">
-        
-        <div class="login">
-            <div class="container">   
-                <h1 class="title">INICIAR SESIÓN</h1>         
+        <div class="login d-flex justify-content-center align-items-center">
+            <div class="container my-5" style="max-width: 500px; background-color: #1e1e1e; opacity: 0.8;">
+                <h1 class="title text-center mb-4">INICIAR SESIÓN</h1>
                 <form method="POST" action="{% url 'login' %}">
                     {% csrf_token %}
-                    <label for="correo" style="color: #ffffff;">Correo</label><br>
-                    <input type="email" name="correo" placeholder="Ingrese su correo" id="correo" required><br><br>
                     
-                    <label for="contrasena" style="color: #ffffff;">Contraseña</label><br>
-                    <input type="password" name="contrasena" placeholder="Ingrese su contraseña" id="contrasena" required><br><br>
-                    
-                    <a href="{% url 'crearcuenta' %}" style="color: blue;">¿Aún no tienes tu cuenta?</a><br>
-                    <a href="{% url 'recuperarpass' %}" style="color: blue;">¿Olvidaste tu contraseña?</a><br><br>
-                    
-                    <button type="submit" style="margin-left: 50px;" class="btn btn-dark">Ingresar</button>
+                    <div class="mb-3">
+                        <label for="correo" class="form-label text-white">Correo</label>
+                        <input type="email" name="correo" id="correo" class="form-control" placeholder="Ingrese su correo" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="contrasena" class="form-label text-white">Contraseña</label>
+                        <input type="password" name="contrasena" id="contrasena" class="form-control" placeholder="Ingrese su contraseña" required>
+                    </div>
+
+                    <div class="mb-3 d-flex flex-column" style="margin-left: 10px;">
+                        <a href="{% url 'crearcuenta' %}" class="text-primary mb-1">¿Aún no tienes tu cuenta?</a>
+                        <a href="{% url 'recuperarpass' %}" class="text-primary">¿Olvidaste tu contraseña?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-light w-100">Ingresar</button>
                 </form>
+
                 {% if messages %}
                 <script>
-                    document.addEventListener("DOMContentLoaded", function() {
+                    document.addEventListener("DOMContentLoaded", function () {
                         {% for message in messages %}
                             Swal.fire({
-                                icon: "{{ message.tags }}",  // 'error', 'success', etc.
+                                icon: "{{ message.tags }}",
                                 title: "{{ message|escapejs }}",
                                 confirmButtonText: 'OK'
                             });
@@ -58,8 +65,7 @@
                 </script>
                 {% endif %}
             </div>
-        </div>    
-
+        </div>
     </div>
 
 
