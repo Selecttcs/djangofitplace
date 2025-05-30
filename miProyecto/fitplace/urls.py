@@ -10,7 +10,6 @@ urlpatterns=[
     path('Principal/', views.principal, name='principal'),
     path('Comunidad/', views.comunidad, name='comunidad'),
     path('Rutinas/', views.rutinas, name='rutinas'),
-    path('rutinas/generar/', views.generar_rutina, name='generar_rutina'),
     path('Retroalimentacion/', views.retroalimentacion, name='retroalimentacion'),
     path('Nutricion/', views.nutricion, name='nutricion'),
     path('Perfil/', views.perfil, name='perfil'),

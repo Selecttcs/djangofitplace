@@ -5,8 +5,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous" />
+    <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}"  type="image/x-icon">
+
     <title>FitPlace-Rutinas</title>
 </head>
 <body>
@@ -64,27 +65,7 @@
             <button id="btnGenerarRutina" class="btn btn-light boton">Generar rutina</button>
         </div>
 
-        <script>
-        document.getElementById('btnGenerarRutina').addEventListener('click', function() {
-            fetch("{% url 'generar_rutina' %}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json',
-                },
-                body: '{}'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success){
-                    alert('Rutina generada correctamente. Recargando...');
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + (data.error || 'No se pudo generar la rutina'));
-                }
-            });
-        });
-        </script>
+        
         {% endif %}
     </div>
 
@@ -118,30 +99,6 @@
         </div>
       </div>
     </div>
-    <script>
-      document.getElementById('btnGenerarRutina').addEventListener('click', function() {
-          fetch("{% url 'generar_rutina' %}", {
-              method: 'POST',  // método POST para modificar datos en el servidor
-              headers: {
-                  'X-CSRFToken': '{{ csrf_token }}',  // Token para protección CSRF en Django
-                  'Content-Type': 'application/json',
-              },
-              body: '{}'  // Enviamos un body vacío JSON, puedes enviar más datos si quieres
-          })
-          .then(response => response.json())
-          .then(data => {
-              if(data.success){
-                  alert('Rutina generada correctamente. Recargando...');
-                  window.location.reload();  // recarga la página para mostrar la rutina asignada
-              } else {
-                  alert('Error: ' + (data.error || 'No se pudo generar la rutina'));
-              }
-          })
-          .catch(error => {
-              alert('Error de conexión: ' + error);
-          });
-      });
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
 </body>
