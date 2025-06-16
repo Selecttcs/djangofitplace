@@ -201,7 +201,7 @@ def rutinas(request):
 
     if not usuario_id:
         print("No hay usuario en sesión, redirigiendo a login...")
-        return redirect('login')  # Cambia según tu urls.py
+        return redirect('login')
 
     with connection.cursor() as cursor:
         # Obtener objetivo crudo del usuario
@@ -210,17 +210,15 @@ def rutinas(request):
         objetivo_raw = resultado[0] if resultado else None
         print(f"Objetivo del usuario (raw): {objetivo_raw}")
 
-        # Diccionario para mapear objetivos del usuario a los de la BD sin tildes ni espacios
         mapa_objetivos = {
-            'aumentodefuerza': 'fuerza',
-            'perdidadegrasa': 'perdida grasa',
-            'masamuscular': 'masa muscular',
+            'aumento de fuerza': 'fuerza',
+            'perdida de grasa': 'perdida grasa',
+            'masa muscular': 'masa muscular',
             'flexibilidad': 'flexibilidad',
         }
 
-        objetivo_normalizado = normalize_text(objetivo_raw)
-        objetivo = mapa_objetivos.get(objetivo_normalizado, None)
-        print(f"Objetivo del usuario (normalizado y sin tildes): {objetivo}")
+        objetivo = mapa_objetivos.get(objetivo_raw.lower(), None) if objetivo_raw else None
+        print(f"Objetivo del usuario (normalizado): {objetivo}")
 
         if not objetivo:
             context = {
@@ -231,14 +229,14 @@ def rutinas(request):
             print("Objetivo no soportado o no definido, renderizando template sin rutina.")
             return render(request, 'fitplace/Rutinas.html', context)
 
-        # Buscar rutina que coincida con el objetivo normalizado
+        # Buscar rutina para el objetivo
         cursor.execute("SELECT id_rutina, nombre_rutina, descripcion FROM rutina WHERE objetivo = :obj", {'obj': objetivo})
         rutina = cursor.fetchone()
         print(f"Rutina encontrada para el objetivo: {rutina}")
 
         if not rutina:
             context = {
-                'mensaje': f'No existe una rutina disponible para el objetivo \"{objetivo}\".',
+                'mensaje': f'No existe una rutina disponible para el objetivo "{objetivo}".',
                 'tiene_rutina': False,
                 'rutina_por_dia_lista': []
             }
@@ -247,7 +245,7 @@ def rutinas(request):
 
         id_rutina, nombre_rutina, descripcion_rutina = rutina
 
-        # Comprobar rutina asignada actual
+        # Verificar rutina asignada
         cursor.execute("SELECT id_rutina_asignada FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
         resultado_rutina_asignada = cursor.fetchone()
         rutina_asignada = resultado_rutina_asignada[0] if resultado_rutina_asignada else None
@@ -258,7 +256,7 @@ def rutinas(request):
             cursor.execute("UPDATE usuario SET id_rutina_asignada = :id_rutina WHERE id_usuario = :id_usuario",
                            {'id_rutina': id_rutina, 'id_usuario': usuario_id})
             print("Rutina asignada al usuario")
-            rutina_asignada = id_rutina  # Actualizamos variable para la plantilla
+            rutina_asignada = id_rutina
 
         if not rutina_asignada:
             print("Usuario no tiene rutina asignada aún.")
@@ -269,16 +267,35 @@ def rutinas(request):
             }
             return render(request, 'fitplace/Rutinas.html', context)
 
+        # Obtener ejercicios de rutina asignada, organizados por día
+        cursor.execute("""
+            SELECT re.dia_semana, e.nombre_ejercicio, e.descripcion
+            FROM rutina_ejercicios re
+            JOIN ejercicio e ON re.id_ejercicio = e.id_ejercicio
+            WHERE re.id_rutina = :id_rutina
+        """, {'id_rutina': rutina_asignada})
+        resultados = cursor.fetchall()
+        print("Ejercicios encontrados para la rutina asignada:")
+        for row in resultados:
+            print(row)
+
+        # Organizar por días
+        dias_orden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+        rutina_por_dia = {dia: [] for dia in dias_orden}
+        for dia, nombre, descripcion in resultados:
+            rutina_por_dia[dia].append({'nombre': nombre, 'descripcion': descripcion})
+
+        rutina_por_dia_lista = [(dia, rutina_por_dia[dia]) for dia in dias_orden]
+
         context = {
             'tiene_rutina': True,
             'nombre_rutina': nombre_rutina,
             'descripcion_rutina': descripcion_rutina,
             'mensaje': '',
-            'rutina_por_dia_lista': []  # vacío porque no hay ejercicios en esta versión
+            'rutina_por_dia_lista': rutina_por_dia_lista
         }
-        print("Renderizando plantilla con rutina asignada.")
+        print("Renderizando plantilla con rutina asignada y ejercicios filtrados por día.")
         return render(request, 'fitplace/Rutinas.html', context)
-
 
 
 
