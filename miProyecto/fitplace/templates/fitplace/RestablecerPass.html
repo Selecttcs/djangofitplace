@@ -32,24 +32,21 @@
             
     </div>
     <div class="body">
-        
         <div class="login">
             <div class="container">   
                 <h1 class="title">RESTABLECER CONTRASEÑA</h1>         
-                <form>
-                    <label for="correo">Correo</label><br>
-                    <input type="text" placeholder="Ingrese su correo" id="correo"><br>
-                    <label for="pass">Contraseña</label><br>
-                    <input type="password" placeholder="Ingrese la contraseña" id="pass"><br>
-                    <label for="pass">Repetir Contraseña</label><br>
-                    <input type="password" placeholder="Ingrese la contraseña" id="Repetirpass"><br>
-                    <br>
-                    <button onclick="Alerta()" type="button" style="margin-left:55px" class="btn btn-dark">Enviar</button>
+                <form method="post">
+                {% csrf_token %}
+                <label for="nueva_pass">Nueva Contraseña</label><br>
+                <input type="password" id="nueva_pass" name="nueva_pass" placeholder="Nueva contraseña"><br>
 
+                <label for="repetir_pass">Repetir Contraseña</label><br>
+                <input type="password" id="repetir_pass" name="repetir_pass" placeholder="Repetir contraseña"><br>
+
+                <button type="submit" class="btn btn-dark mt-3">Actualizar Contraseña</button>
                 </form>
             </div>
         </div>    
-
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

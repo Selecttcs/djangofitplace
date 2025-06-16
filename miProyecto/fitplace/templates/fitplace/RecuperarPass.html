@@ -24,33 +24,79 @@
     <title>FitPlace-RecuperarPass</title>
 </head>
 <body>
-    <div class="header">
-        <img src=" {% static 'fitplace/img/logofit.png' %}" alt="fitPLaceLOGO" class="logo">
-        <div style="margin-left: auto; margin-right: 20px;">
-            <a href="index.html"><button type="button"  class="btn btn-light">Volver</button></a>
+     <div class="header d-flex align-items-center">
+        <img src="{% static 'fitplace/img/logofit.png' %}" alt="fitPlaceLOGO" class="logo" />
+        <div class="ms-auto me-3">
+            <a href="{% url 'index' %}">
+                <button type="button" class="btn btn-light">Volver</button>
+            </a>
         </div>
-            
     </div>
+
     <div class="body">
-        
-        <div class="login">
-            <div class="container">   
-                <h1 class="title">RECUPERAR CONTRASEÑA</h1>         
-                <form>
-                    <label for="correo">Correo</label><br>
-                    <input type="text" placeholder="Ingrese su correo" id="correo"><br>
-                    <label for="pass">Código</label><br>
-                    <input type="password" placeholder="Ingrese el código" id="code"><br>
-                    <br>
-                    <button onclick="Alerta()"  type="button" style="margin-left: 55px;" class="btn btn-dark">Enviar</button>
-
+        <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+            <div class="p-4 border rounded shadow"
+                style="width: fit-content; min-width: 300px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+                <h1 class="title text-center mb-4" style="font-size: 1.5rem; color: white;">RECUPERAR CONTRASEÑA</h1>
+                <!-- Form para correo y para validar código (se usa solo uno a la vez según modal) -->
+                <form method="post" action="">
+                    {% csrf_token %}
+                    {% if not mostrar_modal %}
+                        <div class="mb-3">
+                            <label for="correo" class="form-label text-white">Correo</label>
+                            <input type="email" name="correo" class="form-control" id="correo"
+                                placeholder="Ingrese su correo" required />
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-dark">Enviar</button>
+                        </div>
+                    {% else %}
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label text-white">Ingrese el código enviado a su correo</label>
+                            <input type="text" name="codigo" class="form-control" id="codigo"
+                                placeholder="Código de 6 dígitos" required autofocus />
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-success">Validar Código</button>
+                        </div>
+                    {% endif %}
                 </form>
+
+                <!-- Mensajes de error o éxito -->
             </div>
-        </div>    
-
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous">
+    </script>
+
+    {% if messages %}
+        <script>
+            {% for message in messages %}
+                {% if message.tags == 'success' %}
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: '{{ message }}',
+                        timer: 3000,
+                        timerProgressBar: true,
+                        showConfirmButton: false
+                    });
+                {% elif message.tags == 'error' %}
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: '{{ message }}',
+                        timer: 4000,
+                        timerProgressBar: true,
+                        showConfirmButton: false
+                    });
+                {% endif %}
+            {% endfor %}
+        </script>
+    {% endif %}
 </body> 
 </html>

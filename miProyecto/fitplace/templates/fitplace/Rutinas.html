@@ -28,7 +28,18 @@
     <div class="body">
         <h1 class="title">RUTINAS</h1>
 
+        {% if mensaje %}
+        <div class="alert alert-warning text-center" role="alert" style="max-width: 600px; margin: 0 auto;">
+            {{ mensaje }}
+        </div>
+        {% endif %}
+
         {% if tiene_rutina %}
+        <div class="container text-center mb-4">
+            <h2>Rutina asignada: {{ nombre_rutina }}</h2>
+            <p>{{ descripcion_rutina }}</p>
+        </div>
+
         <div class="container">
             <table class="table table-bordered text-center">
                 <thead>
@@ -58,14 +69,16 @@
                 </tbody>
             </table>
         </div>
+
         {% else %}
         <div class="container text-center" style="color: white;">
             <h2>¿No tienes una rutina?</h2>
             <h3>¡Generemos una!</h3>
-            <button id="btnGenerarRutina" class="btn btn-light boton">Generar rutina</button>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" id="btnGenerarRutina" class="btn btn-light boton">Generar rutina</button>
+            </form>
         </div>
-
-        
         {% endif %}
     </div>
 

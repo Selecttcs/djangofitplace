@@ -1,76 +1,93 @@
-{%load static%}
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
-    <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}"  type="image/x-icon">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitPlace - Planes</title>
+  <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}" type="image/x-icon">
 
-    <title>FitPlace-Planes</title>
+  <script>
+    function toggleCheckbox(selectedId) {
+      const checkboxes = document.querySelectorAll('input[name="plan"]');
+      checkboxes.forEach(cb => {
+        if (cb.id !== selectedId) {
+          cb.checked = false;
+        }
+      });
+    }
+  </script>
 </head>
 <body>
-    <div class="header">
-        
-        <img src=" {% static 'fitplace/img/logofit.png' %}"  alt="fitPLaceLOGO" class="logo">
-  
-        <div style="margin-left: auto; padding: 20px; display: flex;">
-            
-        </div>
-        <div>
-            <a href="{% url 'perfil' %}"><img src=" {% static 'fitplace/img/volver.png' %}"  alt="" class="imgsalir"></a>
-        </div>
-            
+  <div class="header">
+    <img src="{% static 'fitplace/img/logofit.png' %}" alt="fitPlaceLOGO" class="logo">
+    <div style="margin-left: auto; padding: 20px; display: flex;"></div>
+    <div>
+      <a href="{% url 'perfil' %}">
+        <img src="{% static 'fitplace/img/volver.png' %}" alt="Volver" class="imgsalir">
+      </a>
     </div>
-    <div class="body">
-        
-        <h1 class="title">PLANES</h1>
-        <div class="container">
-            <h1 class="title">ELITE FIT</h1><br>
-            <div class="perfil">
-                
-                <div class="info">
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" ><br>
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" ><br>
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                </div>
+  </div>
 
-            </div>
+  <div class="body text-light text-center">
+    <h1 class="title">PLANES</h1>
 
-        </div>
-        <div class="container">
-            <h1 class="title">STARTER FIT</h1><br>
-            <div class="perfil">
-                <div class="info">
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" ><br>
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" ><br>
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                    <input type="text" placeholder="" >
-                </div>
-            </div>
-        </div>
-        <div class="container">
-            <a href="{% url 'pago' %}"><button type="button" class="btn btn-light" >PAGAR</button></a>
-        </div>
+    <!-- ELITE FIT -->
+    <div class="container mb-5">
+      <h2 class="title">ELITE FIT</h2><br>
+      <div class="perfil bg-dark p-4 rounded shadow text-start">
 
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item bg-dark text-light">✅ Genera una rutina basada en tus objetivos</li>
+          <li class="list-group-item bg-dark text-light">✅ Retroalimenta tu rutina</li>
+          <li class="list-group-item bg-dark text-light">✅ Plan de alimentación basado en calorías diarias</li>
+          <li class="list-group-item bg-dark text-light">✅ Participa en la comunidad con mensajes</li>
+          <li class="list-group-item bg-dark text-light">✅ Acceso a calendario de rutinas</li>
+          <li class="list-group-item bg-dark text-light">✅ Consejos de un entrenador personalizado</li>
+        </ul>
+      </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="elite" name="plan" onclick="toggleCheckbox(this.id)">
+          <label class="form-check-label" for="elite">Seleccionar ELITE FIT</label>
+        </div>
     </div>
-        <div class="logoculturista">
-            <img src=" {% static 'fitplace/img/culturista.png' %}"  alt="culturista.png">
-        </div>
+
+    <!-- STARTER FIT -->
+    <div class="container mb-5">
+      <h2 class="title">STARTER FIT</h2><br>
+      <div class="perfil bg-dark p-4 rounded shadow text-start">
+
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item bg-dark text-light">✅ Genera una rutina basada en tus objetivos</li>
+          <li class="list-group-item bg-dark text-light">✅ Retroalimenta tu rutina</li>
+          <li class="list-group-item bg-dark text-light">✅ Plan de alimentación basado en calorías diarias</li>
+          <li class="list-group-item bg-dark text-light">✅ Participa en la comunidad con mensajes</li>
+          <li class="list-group-item bg-dark text-light">❌ Sin calendario de rutina</li>
+          <li class="list-group-item bg-dark text-light">❌ Sin consejos personalizados de entrenador</li>
+        </ul>
         
+      </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="starter" name="plan" onclick="toggleCheckbox(this.id)">
+          <label class="form-check-label" for="starter">Seleccionar STARTER FIT</label>
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
-</body> 
+
+    <!-- Botón de pago -->
+    <div class="container mb-5">
+      <a href="{% url 'pago' %}">
+        <button type="button" class="btn btn-light">PAGAR</button>
+      </a>
+    </div>
+  </div>
+
+  <!-- Imagen decorativa -->
+  <div class="logoculturista">
+    <img src="{% static 'fitplace/img/culturista.png' %}" alt="culturista.png">
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>

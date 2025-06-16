@@ -1,3 +1,8 @@
+import random
+import smtplib
+import ssl
+import unicodedata
+
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import connection
@@ -7,6 +12,9 @@ from django.http import JsonResponse
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+from django.db import connection
+from email.message import EmailMessage
 
 # Create your views here.
 import time
@@ -82,22 +90,205 @@ def crear_cuenta(request):
             return redirect('crearcuenta')
 
     return render(request, 'fitplace/CrearCuenta.html')
-    
+
+##Recuperar PASS 
+
 def recuperarpass(request):
-    context={}
-    return render(request,'fitplace/RecuperarPass.html', context)
+    mostrar_modal = False
+
+    if request.method == 'POST' and 'correo' in request.POST and 'codigo' not in request.POST:
+        # Enviar código por correo
+        correo = request.POST.get('correo')
+        codigo = str(random.randint(100000, 999999))
+        request.session['codigo_recuperacion'] = codigo
+        request.session['correo_recuperacion'] = correo
+
+        try:
+            msg = EmailMessage()
+            msg.set_content(f'Tu código de recuperación es: {codigo}')
+            msg['Subject'] = 'Código de recuperación de contraseña'
+            msg['From'] = 'fitplac3@gmail.com'
+            msg['To'] = correo
+
+            context = ssl.create_default_context()
+
+            with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login('fitplac3@gmail.com', 'zcydzrcoojstwznc')
+                server.send_message(msg)
+
+            messages.success(request, "Código enviado a tu correo.")
+            mostrar_modal = True  # Mostrar modal para ingresar código
+        except Exception as e:
+            messages.error(request, f"Error al enviar correo: {e}")
+
+    elif request.method == 'POST' and 'codigo' in request.POST:
+        # Validar código ingresado
+        codigo_ingresado = request.POST.get('codigo')
+        codigo_enviado = request.session.get('codigo_recuperacion')
+
+        # Debug: imprimir códigos para revisar
+        print(f"codigo ingresado: {codigo_ingresado}")
+        print(f"codigo enviado: {codigo_enviado}")
+
+        if codigo_ingresado == codigo_enviado:
+            return redirect('restablecerpass')
+        else:
+            messages.error(request, "Código incorrecto.")
+            mostrar_modal = True
+
+    return render(request, 'fitplace/RecuperarPass.html', {'mostrar_modal': mostrar_modal})
+
+
+
 
 def restablecerpass(request):
-    context={}
-    return render(request,'fitplace/RestablecerPass.html', context)    
+    if request.method == 'POST':
+        nueva_pass = request.POST.get('nueva_pass')
+        repetir_pass = request.POST.get('repetir_pass')
+        correo = request.session.get('correo_recuperacion')
+
+        # Debug para verificar valores recibidos
+        print(f"nueva_pass: {nueva_pass}")
+        print(f"repetir_pass: {repetir_pass}")
+        print(f"correo en sesión: {correo}")
+
+        if not nueva_pass or not repetir_pass:
+            messages.error(request, "Debes completar ambos campos de contraseña.")
+        elif nueva_pass != repetir_pass:
+            messages.error(request, "Las contraseñas no coinciden.")
+        elif correo:
+            try:
+                with connection.cursor() as cursor:
+                    # Asegurarse que nueva_pass sea string y no None
+                    cursor.execute("""
+                        UPDATE USUARIO
+                        SET CONTRASENA = :1
+                        WHERE CORREO_ELECTRONICO = :2
+                    """, [str(nueva_pass), correo])
+                messages.success(request, "Contraseña actualizada correctamente.")
+                request.session.pop('correo_recuperacion', None)
+                request.session.pop('codigo_recuperacion', None)
+                return redirect('login')
+            except Exception as e:
+                messages.error(request, f"Error al actualizar contraseña: {e}")
+        else:
+            messages.error(request, "No se encontró correo asociado en la sesión.")
+
+    return render(request, 'fitplace/RestablecerPass.html')
+
+
+
+
+def normalize_text(text):
+    if not text:
+        return ''
+    text = text.strip().lower()
+    # Eliminar tildes
+    text = ''.join(
+        c for c in unicodedata.normalize('NFD', text)
+        if unicodedata.category(c) != 'Mn'
+    )
+    # Eliminar espacios internos para mapear bien
+    text = text.replace(' ', '')
+    return text
 
 def rutinas(request):
-    
+    usuario_id = request.session.get('user_id')
+    print(f"Usuario en sesión: {usuario_id}")
+
+    if not usuario_id:
+        print("No hay usuario en sesión, redirigiendo a login...")
+        return redirect('login')  # Cambia según tu urls.py
+
+    with connection.cursor() as cursor:
+        # Obtener objetivo crudo del usuario
+        cursor.execute("SELECT objetivo FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
+        resultado = cursor.fetchone()
+        objetivo_raw = resultado[0] if resultado else None
+        print(f"Objetivo del usuario (raw): {objetivo_raw}")
+
+        # Diccionario para mapear objetivos del usuario a los de la BD sin tildes ni espacios
+        mapa_objetivos = {
+            'aumentodefuerza': 'fuerza',
+            'perdidadegrasa': 'perdida grasa',
+            'masamuscular': 'masa muscular',
+            'flexibilidad': 'flexibilidad',
+        }
+
+        objetivo_normalizado = normalize_text(objetivo_raw)
+        objetivo = mapa_objetivos.get(objetivo_normalizado, None)
+        print(f"Objetivo del usuario (normalizado y sin tildes): {objetivo}")
+
+        if not objetivo:
+            context = {
+                'mensaje': 'No tienes un objetivo definido o no soportado. Por favor, establece uno válido para generar rutinas.',
+                'tiene_rutina': False,
+                'rutina_por_dia_lista': []
+            }
+            print("Objetivo no soportado o no definido, renderizando template sin rutina.")
+            return render(request, 'fitplace/Rutinas.html', context)
+
+        # Buscar rutina que coincida con el objetivo normalizado
+        cursor.execute("SELECT id_rutina, nombre_rutina, descripcion FROM rutina WHERE objetivo = :obj", {'obj': objetivo})
+        rutina = cursor.fetchone()
+        print(f"Rutina encontrada para el objetivo: {rutina}")
+
+        if not rutina:
+            context = {
+                'mensaje': f'No existe una rutina disponible para el objetivo \"{objetivo}\".',
+                'tiene_rutina': False,
+                'rutina_por_dia_lista': []
+            }
+            print("No hay rutina para ese objetivo.")
+            return render(request, 'fitplace/Rutinas.html', context)
+
+        id_rutina, nombre_rutina, descripcion_rutina = rutina
+
+        # Comprobar rutina asignada actual
+        cursor.execute("SELECT id_rutina_asignada FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
+        resultado_rutina_asignada = cursor.fetchone()
+        rutina_asignada = resultado_rutina_asignada[0] if resultado_rutina_asignada else None
+        print(f"Rutina asignada actualmente: {rutina_asignada}")
+
+        if request.method == 'POST':
+            print("Recibido POST para asignar rutina")
+            cursor.execute("UPDATE usuario SET id_rutina_asignada = :id_rutina WHERE id_usuario = :id_usuario",
+                           {'id_rutina': id_rutina, 'id_usuario': usuario_id})
+            print("Rutina asignada al usuario")
+            rutina_asignada = id_rutina  # Actualizamos variable para la plantilla
+
+        if not rutina_asignada:
+            print("Usuario no tiene rutina asignada aún.")
+            context = {
+                'mensaje': 'No tienes una rutina asignada. Puedes generarla ahora.',
+                'tiene_rutina': False,
+                'rutina_por_dia_lista': []
+            }
+            return render(request, 'fitplace/Rutinas.html', context)
+
+        context = {
+            'tiene_rutina': True,
+            'nombre_rutina': nombre_rutina,
+            'descripcion_rutina': descripcion_rutina,
+            'mensaje': '',
+            'rutina_por_dia_lista': []  # vacío porque no hay ejercicios en esta versión
+        }
+        print("Renderizando plantilla con rutina asignada.")
+        return render(request, 'fitplace/Rutinas.html', context)
 
 
-    context={}
-    return render(request,'fitplace/Rutinas.html', context)    
-    
+
+
+
+
+
+
+
+
+
 def principal(request):
     context={}
     return render(request,'fitplace/Principal.html', context)    
