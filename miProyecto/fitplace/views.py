@@ -2,10 +2,12 @@ import random
 import smtplib
 import ssl
 import unicodedata
+import time
+import os
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.db import connection
+from django.db import connection, transaction
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.hashers import make_password
 from django.http import JsonResponse
@@ -17,7 +19,6 @@ from django.db import connection
 from email.message import EmailMessage
 
 # Create your views here.
-import time
 
 def index(request):
     context={}
@@ -38,11 +39,17 @@ def login(request):
 
                 if user:
                     request.session['user_id'] = user[0]
+                    os.system("cls")
+                    print('Credenciales correctas, redirigiendo a la pantalla principal')
                     return redirect('principal')
                 else:
+                    os.system("cls")
+                    print('Correo o contraseña incorrectos.')
                     messages.error(request, "Correo o contraseña incorrectos.")
         except Exception as e:
+            os.system("cls")
             messages.error(request, f"Error al acceder a la base de datos: {e}")
+            print('Error al acceder a la Base de datos.')
 
     return render(request, 'fitplace/Login.html')
 
@@ -150,7 +157,6 @@ def restablecerpass(request):
         repetir_pass = request.POST.get('repetir_pass')
         correo = request.session.get('correo_recuperacion')
 
-        # Debug para verificar valores recibidos
         print(f"nueva_pass: {nueva_pass}")
         print(f"repetir_pass: {repetir_pass}")
         print(f"correo en sesión: {correo}")
@@ -161,24 +167,35 @@ def restablecerpass(request):
             messages.error(request, "Las contraseñas no coinciden.")
         elif correo:
             try:
-                with connection.cursor() as cursor:
-                    # Asegurarse que nueva_pass sea string y no None
-                    cursor.execute("""
-                        UPDATE USUARIO
-                        SET CONTRASENA = :1
-                        WHERE CORREO_ELECTRONICO = :2
-                    """, [str(nueva_pass), correo])
-                messages.success(request, "Contraseña actualizada correctamente.")
-                request.session.pop('correo_recuperacion', None)
-                request.session.pop('codigo_recuperacion', None)
-                return redirect('login')
+                nueva_pass_str = str(nueva_pass) if nueva_pass is not None else ''
+                correo_str = str(correo) if correo is not None else ''
+
+                with transaction.atomic():
+                    with connection.cursor() as cursor:
+                        cursor.execute("""
+                            UPDATE USUARIO
+                            SET CONTRASENA = :1
+                            WHERE CORREO_ELECTRONICO = :2
+                        """, [nueva_pass_str, correo_str])
+                        filas_afectadas = cursor.rowcount
+                        print(f"Filas afectadas por el UPDATE: {filas_afectadas}")
+
+                    if filas_afectadas == 0:
+                        messages.error(request, "No se encontró usuario con ese correo.")
+                    else:
+                        print("Contraseña actualizada con éxito, redirigiendo...")
+                        messages.success(request, "Contraseña actualizada correctamente.")
+                        request.session.pop('correo_recuperacion', None)
+                        request.session.pop('codigo_recuperacion', None)
+                        return redirect('login')
+
             except Exception as e:
+                print(f"Exception al actualizar contraseña: {e}")
                 messages.error(request, f"Error al actualizar contraseña: {e}")
         else:
             messages.error(request, "No se encontró correo asociado en la sesión.")
 
     return render(request, 'fitplace/RestablecerPass.html')
-
 
 
 
@@ -211,14 +228,16 @@ def rutinas(request):
         print(f"Objetivo del usuario (raw): {objetivo_raw}")
 
         mapa_objetivos = {
-            'aumento de fuerza': 'fuerza',
-            'perdida de grasa': 'perdida grasa',
-            'masa muscular': 'masa muscular',
+            'aumentodefuerza': 'fuerza',
+            'perdidadegrasa': 'perdida grasa',
+            'masamuscular': 'masa muscular',
             'flexibilidad': 'flexibilidad',
         }
 
-        objetivo = mapa_objetivos.get(objetivo_raw.lower(), None) if objetivo_raw else None
-        print(f"Objetivo del usuario (normalizado): {objetivo}")
+        objetivo_normalizado = normalize_text(objetivo_raw)
+        print(f"Objetivo del usuario (normalizado): {objetivo_normalizado}")
+
+        objetivo = mapa_objetivos.get(objetivo_normalizado, None)
 
         if not objetivo:
             context = {
@@ -253,9 +272,36 @@ def rutinas(request):
 
         if request.method == 'POST':
             print("Recibido POST para asignar rutina")
+
+            # 1. Asignar la rutina al usuario
             cursor.execute("UPDATE usuario SET id_rutina_asignada = :id_rutina WHERE id_usuario = :id_usuario",
                            {'id_rutina': id_rutina, 'id_usuario': usuario_id})
             print("Rutina asignada al usuario")
+
+            # 2. Eliminar ejercicios anteriores de la rutina
+            cursor.execute("DELETE FROM rutina_ejercicios WHERE id_rutina = :id_rutina", {'id_rutina': id_rutina})
+            print("Ejercicios anteriores de la rutina eliminados")
+
+            # 3. Obtener ejercicios filtrados por objetivo (usando el campo tipo o similar)
+            cursor.execute("""
+                SELECT id_ejercicio, nombre_ejercicio, descripcion
+                FROM ejercicio
+                WHERE tipo = :tipo_objetivo
+            """, {'tipo_objetivo': objetivo})
+            ejercicios_filtrados = cursor.fetchall()
+            print(f"Ejercicios filtrados para objetivo '{objetivo}': {ejercicios_filtrados}")
+
+            # 4. Distribuir ejercicios por días (ejemplo básico: repartir en días de lunes a viernes)
+            dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+            for i, ejercicio in enumerate(ejercicios_filtrados):
+                dia = dias_semana[i % len(dias_semana)]
+                id_ejercicio = ejercicio[0]
+                cursor.execute("""
+                    INSERT INTO rutina_ejercicios (id_rutina, id_ejercicio, dia_semana)
+                    VALUES (:id_rutina, :id_ejercicio, :dia_semana)
+                """, {'id_rutina': id_rutina, 'id_ejercicio': id_ejercicio, 'dia_semana': dia})
+            print("Ejercicios insertados en rutina_ejercicios distribuídos por día")
+
             rutina_asignada = id_rutina
 
         if not rutina_asignada:
@@ -266,7 +312,7 @@ def rutinas(request):
                 'rutina_por_dia_lista': []
             }
             return render(request, 'fitplace/Rutinas.html', context)
-
+            
         # Obtener ejercicios de rutina asignada, organizados por día
         cursor.execute("""
             SELECT re.dia_semana, e.nombre_ejercicio, e.descripcion
@@ -306,7 +352,10 @@ def rutinas(request):
 
 
 
+
 def principal(request):
+    os.system("cls")
+    print("Bienvenido a principal!")
     context={}
     return render(request,'fitplace/Principal.html', context)    
     
@@ -355,7 +404,8 @@ def retroalimentacion(request):
 
 def nutricion(request):
     usuario_id = request.session.get('user_id')
-
+    os.system("cls")
+    print(f'Bienvenido al apartado de nutrición del usuario ID: {usuario_id}')
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT EDAD, ESTATURA, PESO, SEXO, OBJETIVO
@@ -560,8 +610,42 @@ def objetivos(request):
     return render(request, 'fitplace/Objetivos.html')
 
 def planes(request):
-    context={}
-    return render(request,'fitplace/Planes.html', context)  
+    usuario_id = request.session.get('user_id')
+    print(f'ID del usuario: {usuario_id}.')
+    plan_actual = None  # Valor por defecto
+
+    if usuario_id:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT PLAN_ID_PLAN FROM ADMIN.USUARIO
+                WHERE ID_USUARIO = :usuario_id
+            """, {'usuario_id': usuario_id})
+            row = cursor.fetchone()
+            if row:
+                plan_actual = row[0]
+                print(f'Plan actual del usuario: {plan_actual}')
+
+    if request.method == 'POST':
+        plan_id = request.POST.get('plan')
+        print(f'Nuevo plan seleccionado: {plan_id}.')
+        if usuario_id and plan_id:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE ADMIN.USUARIO
+                    SET PLAN_ID_PLAN = :plan_id
+                    WHERE ID_USUARIO = :usuario_id
+                """, {'plan_id': plan_id, 'usuario_id': usuario_id})
+            print('Plan del usuario actualizado correctamente')
+            return redirect('perfil')
+        else:
+            print('Error al actualizar el plan del usuario.')
+            return render(request, 'fitplace/Planes.html', {
+                'error': 'Debe seleccionar un plan',
+                'plan_actual': plan_actual
+            })
+
+    return render(request, 'fitplace/Planes.html', {'plan_actual': plan_actual})
+
 
 def pago(request):
     context={}
