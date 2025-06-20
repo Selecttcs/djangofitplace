@@ -390,102 +390,113 @@ def enviar_mensaje_chat(request):
     mensaje_texto = request.POST.get('mensaje')
 
     # OBTENER EL ID DEL RECEPTOR
-    # Si el POST incluye 'receptor_id', úsalo (esto viene del modal del entrenador)
-    id_receptor = request.POST.get('receptor_id') 
+    # Si el POST incluye 'receptor_id', úsalo (esto viene del modal del entrenador o del cliente)
+    receptor_id_str = request.POST.get('receptor_id')
 
     # Si no se proporciona un receptor_id (ej. un cliente envía a su entrenador predeterminado)
-    if not id_receptor:
-        # Aquí podrías tener lógica para determinar el ID del entrenador general o asignado al cliente.
-        # Por ahora, asumamos un ID fijo para el entrenador si el emisor no especificó un receptor
-        # Esto ocurriría si el cliente estuviera chateando, no el entrenador seleccionando un cliente.
-        # Podrías buscar el ID del entrenador asociado al cliente 'id_emisor' si tienes esa relación.
-        # Por simplicidad, si no hay receptor_id, asumimos que el receptor es el entrenador principal.
-        # Ajusta esto si tienes múltiples entrenadores o una asignación diferente.
-        id_receptor = 700000 # ID del entrenador general (o el ID del entrenador al que el cliente siempre chatea)
+    if not receptor_id_str:
+        # Aquí asumimos que el receptor es el entrenador principal si no se especificó
+        # Ajusta este ID si tu lógica de negocio es diferente
+        receptor_id = 700000
     else:
-        id_receptor = int(id_receptor) # Convertir a entero, ya que viene como string del JS
+        try:
+            # ¡IMPORTANTE! Convertir a entero.
+            # Esto previene problemas de tipo de dato si la columna ID_USUARIO es numérica.
+            receptor_id = int(receptor_id_str)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'ID de receptor inválido o no numérico'}, status=400)
 
     if not mensaje_texto:
         return JsonResponse({'success': False, 'error': 'Mensaje vacío'}, status=400)
 
     try:
         with connection.cursor() as cursor:
-            # Obtener nombre del usuario emisor (esto sigue siendo correcto)
+            # Obtener nombre del usuario emisor
             cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': id_emisor})
-            nombre_emisor = cursor.fetchone()[0]
+            resultado_emisor = cursor.fetchone()
+            if not resultado_emisor:
+                return JsonResponse({'success': False, 'error': 'Nombre de emisor no encontrado'}, status=400)
+            nombre_emisor = resultado_emisor[0]
 
             cursor.execute("""
                 INSERT INTO CHAT_PERSONAL_TRAINER (ID_EMISOR, ID_RECEPTOR, NOMBRE_EMISOR, MENSAJE, FECHA)
                 VALUES (:id_emisor, :id_receptor, :nombre_emisor, :mensaje, SYSDATE)
             """, {
                 'id_emisor': id_emisor,
-                'id_receptor': id_receptor, # ¡Usamos el id_receptor dinámico!
+                'id_receptor': receptor_id, # Usamos el entero convertido
                 'nombre_emisor': nombre_emisor,
                 'mensaje': mensaje_texto
             })
+            
+            # Es CRÍTICO añadir connection.commit() si tu configuración de Django/Oracle
+            # no maneja el autocommit automáticamente para operaciones directas con cursor.
+            # Si el error ORA-02291 persiste y estás seguro de que el usuario 700000 existe
+            # y es visible globalmente, la falta de un commit podría ser la causa.
+            connection.commit() 
+            
+        # Puedes devolver también el mensaje enviado y el timestamp para que el frontend lo agregue inmediatamente
+        # sin necesidad de recargar todos los mensajes si lo deseas.
         return JsonResponse({'success': True, 'mensaje_enviado': mensaje_texto, 'timestamp': datetime.now().strftime("%d-%m-%Y %H:%M")})
     except Exception as e:
         print(f"Error al enviar mensaje: {e}")
-        return JsonResponse({'success': False, 'error': f"Error al enviar mensaje: {e}"}, status=500)
+        # Devuelve un mensaje de error más detallado en producción para depuración, pero no la excepción completa al usuario final.
+        return JsonResponse({'success': False, 'error': f"Error al enviar mensaje: {str(e)}"}, status=500)
 # Agrega una nueva vista para cargar mensajes via AJAX
-def cargar_mensajes_chat(request, cliente_id=None): # <--- ¡Añade cliente_id como argumento!
-    if not request.session.get('user_id'):
+def cargar_mensajes_chat(request, cliente_id=None):
+    usuario_logueado_id = request.session.get('user_id')
+
+    if not usuario_logueado_id:
         return JsonResponse({'success': False, 'error': 'Usuario no autenticado'}, status=401)
 
-    id_usuario_logueado = request.session.get('user_id') # Este puede ser el entrenador o el cliente
-
-    # Determinar el ID del "otro" usuario en el chat
-    id_entrenador = None
-    id_cliente = None
-
-    if es_entrenador(id_usuario_logueado): # Si el logueado es el entrenador
-        id_entrenador = id_usuario_logueado
-        id_cliente = cliente_id # El cliente_id viene de la URL (del modal del entrenador)
-        if not id_cliente: # Esto no debería pasar si el modal lo envía, pero como fallback
-            return JsonResponse({'success': False, 'error': 'ID de cliente no proporcionado'}, status=400)
-    else: # Si el logueado es un cliente
-        id_cliente = id_usuario_logueado
-        # Aquí, necesitas determinar el ID del entrenador al que este cliente chatea.
-        # Asumiendo un ID fijo para el entrenador principal si no hay una asignación explícita.
-        id_entrenador = 700000 
-        # Si tuvieras una relación cliente-entrenador, la buscarías aquí:
-        # cursor.execute("SELECT ID_ENTRENADOR FROM ASIGNACIONES WHERE ID_CLIENTE = :id", {'id': id_cliente})
-        # id_entrenador = cursor.fetchone()[0]
+    # Lógica para determinar el emisor y el receptor para la consulta del chat
+    if cliente_id: # La solicitud es del entrenador, cliente_id es el cliente con quien chatea
+        id_entrenador = usuario_logueado_id
+        id_cliente_para_chat = cliente_id
+        id_para_comparacion_es_mio = id_entrenador
+    else: # La solicitud es del cliente (desde RutinasELITE.html)
+        id_cliente_para_chat = usuario_logueado_id
+        id_entrenador = 700000 # O el ID del entrenador asignado a este cliente si lo obtienes dinámicamente
+        id_para_comparacion_es_mio = id_cliente_para_chat
 
     try:
         with connection.cursor() as cursor:
-            # Obtener nombre del usuario logueado para mostrar en el modal (si aplica)
-            cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': id_usuario_logueado})
-            nombre_usuario_logueado_raw = cursor.fetchone()
-            nombre_usuario_logueado = str(nombre_usuario_logueado_raw[0]) if nombre_usuario_logueado_raw else "Desconocido"
-
             cursor.execute("""
-                SELECT MENSAJE, FECHA, NOMBRE_EMISOR, ID_EMISOR
+                SELECT ID_CHAT, MENSAJE, FECHA, NOMBRE_EMISOR, ID_EMISOR, ID_RECEPTOR
                 FROM CHAT_PERSONAL_TRAINER
-                WHERE (ID_EMISOR = :id_usuario_1 AND ID_RECEPTOR = :id_usuario_2)
-                OR (ID_EMISOR = :id_usuario_2 AND ID_RECEPTOR = :id_usuario_1)
+                WHERE (ID_EMISOR = :id_cliente AND ID_RECEPTOR = :id_entrenador)
+                OR (ID_EMISOR = :id_entrenador AND ID_RECEPTOR = :id_cliente)
                 ORDER BY FECHA ASC
-            """, {'id_usuario_1': id_cliente, 'id_usuario_2': id_entrenador}) # <--- Usar id_cliente y id_entrenador
-            raw_messages = cursor.fetchall()
+            """, {'id_cliente': id_cliente_para_chat, 'id_entrenador': id_entrenador})
 
-            chat_data = []
-            for msg in raw_messages:
-                mensaje_texto = str(msg[0]) 
-                fecha_formateada = msg[1].strftime("%d-%m-%Y %H:%M")
-                nombre_emisor_texto = str(msg[2])
-                id_emisor = msg[3]
+            chat_data = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
 
-                chat_data.append({
-                    'MENSAJE': mensaje_texto,
-                    'FECHA': fecha_formateada,
-                    'NOMBRE_EMISOR': nombre_emisor_texto,
-                    # 'ID_EMISOR' es importante para el JS para saber si el mensaje es "mío"
-                    'ID_EMISOR': id_emisor 
-                })
-            return JsonResponse({'success': True, 'messages': chat_data, 'nombre_usuario_logueado': nombre_usuario_logueado}) # <--- Cambié 'chat' a 'messages' para ser consistente con el JS
+            messages_list = []
+            for row in chat_data:
+                msg_dict = dict(zip(columns, row))
+
+                # Manejo específico para columnas LOB si existen
+                for key, value in msg_dict.items():
+                    # Si el valor es un objeto LOB (ej. cx_Oracle.LOB), léelo
+                    if hasattr(value, 'read'): # Una forma de verificar si es un objeto LOB
+                        msg_dict[key] = value.read() # Lee el contenido del LOB
+                        if isinstance(msg_dict[key], bytes): # Si es bytes, decodifica a string
+                            msg_dict[key] = msg_dict[key].decode('utf-8') # Ajusta la codificación si es diferente
+
+                # Formatear la fecha para que JavaScript la reciba legible
+                if 'FECHA' in msg_dict and isinstance(msg_dict['FECHA'], datetime):
+                    msg_dict['FECHA'] = msg_dict['FECHA'].strftime("%d-%m-%Y %H:%M")
+
+                # Lógica para determinar si el mensaje fue enviado por el usuario logueado actualmente
+                msg_dict['ES_MIO'] = (msg_dict['ID_EMISOR'] == id_para_comparacion_es_mio)
+
+                messages_list.append(msg_dict)
+
+        return JsonResponse({'success': True, 'chat': messages_list})
+
     except Exception as e:
-        print(f"Error al cargar mensajes: {e}")
-        return JsonResponse({'success': False, 'error': f"Error al cargar mensajes: {e}"}, status=500)
+        print(f"Error al cargar mensajes de chat: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 

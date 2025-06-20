@@ -185,7 +185,7 @@
                             alert('Evento: ' + info.event.title + '\nDescripción: ' + (info.event.extendedProps.description || 'N/A'));
                             // Puedes abrir otro modal o mostrar más detalles aquí
                         }
-                    });
+                    }); 
                     calendar.render();
                 } else {
                     // Si el calendario ya fue inicializado, solo asegúrate de que se redibuje correctamente
@@ -197,8 +197,12 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const chatBox = document.getElementById('chat-box');
-            const chatForm = document.getElementById('chat-form'); // Asigna un ID al formulario
+            const chatForm = document.getElementById('chat-form');
             const mensajeInput = document.getElementById('mensaje_chat');
+
+            // IMPORTANTE: Asegúrate de que entrenador_id y usuario_id_logueado se pasen desde la vista rutinas
+            const entrenadorId = {{ entrenador_id|default:"-1" }}; 
+            const usuarioLogueadoId = {{ usuario_id_logueado|default:"-1" }}; 
 
             // Función para hacer scroll al final del chat
             function scrollToBottom() {
@@ -207,19 +211,22 @@
 
             // Función para cargar los mensajes (AJAX GET)
             function loadMessages() {
-                fetch('{% url "cargar_mensajes_chat_cliente" %}')
+                // ¡¡¡CAMBIO CLAVE AQUÍ!!!
+                fetch('{% url "cargar_mensajes_chat_cliente" %}') // <--- ESTA ES LA URL CORRECTA
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
                             chatBox.innerHTML = ''; // Limpiar el chat actual
-                            data.chat.forEach(msg => {
+                            // Asegúrate de que la vista devuelve 'chat' y no 'messages'
+                            data.chat.forEach(msg => { 
                                 const messageDiv = document.createElement('div');
                                 messageDiv.classList.add('chat-message');
-                                messageDiv.classList.add(msg.ES_MIO ? 'right' : 'left'); // Usa ES_MIO para el lado
+                                // Usa la lógica ES_MIO que viene de la vista
+                                messageDiv.classList.add(msg.ES_MIO ? 'right' : 'left'); 
 
                                 messageDiv.innerHTML = `
                                     <div class="bubble">
-                                        <div class="meta">${msg.NOMBRE_EMISOR} - ${msg.FECHA}</div>
+                                        <div class="meta"><strong>${msg.NOMBRE_EMISOR}</strong> - ${msg.FECHA}</div>
                                         ${msg.MENSAJE}
                                     </div>
                                 `;
@@ -240,14 +247,15 @@
                 const mensaje = mensajeInput.value.trim();
                 if (!mensaje) return;
 
-                const formData = new FormData(chatForm); // Envía todos los datos del formulario, incluyendo el CSRF token
-                formData.append('mensaje', mensaje); // Asegúrate de que el nombre del campo coincida con 'mensaje' en la vista
+                const formData = new FormData(chatForm);
+                formData.append('mensaje', mensaje);
+                formData.append('receptor_id', entrenadorId); // Asegúrate de enviar el ID del entrenador
 
                 fetch('{% url "enviar_mensaje_chat" %}', {
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-CSRFToken': formData.get('csrfmiddlewaretoken') // Envía el CSRF token
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
                     }
                 })
                 .then(response => response.json())
@@ -269,9 +277,6 @@
                 loadMessages();
                 scrollToBottom();
             });
-
-            // Opcional: Recargar mensajes periódicamente (ej. cada 5 segundos)
-            // setInterval(loadMessages, 5000); // Descomenta si quieres un chat "en vivo"
 
             // Asegurar que el chat se desplace hacia abajo al abrirse si hay muchos mensajes
             modalElement.addEventListener('shown.bs.modal', scrollToBottom);

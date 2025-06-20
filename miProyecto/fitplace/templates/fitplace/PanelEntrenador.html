@@ -11,76 +11,82 @@
     <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}" type="image/x-icon">
 
     <title>FitPlace - Panel de Chats del Entrenador</title>
+
     <style>
-        /* Estilos específicos del panel del entrenador */
+        /* --- ESTILOS ESPECÍFICOS PARA EL CONTENEDOR DE LA LISTA DE CLIENTES --- */
+
+        /* Estilos para el contenedor general de la lista */
         .client-list-container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            max-width: 800px;
-            margin: 30px auto; /* Centrar el contenedor */
+            background-color: rgba(255, 255, 255, 0.95); /* Fondo blanco semi-transparente */
+            border-radius: 12px; /* Bordes más redondeados */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); /* Sombra más pronunciada para un efecto flotante */
+            padding: 0; /* Asegurarse de que no haya padding interno en el contenedor */
+            margin-top: 3rem !important; /* Más espacio superior */
+            max-width: 700px; /* Ancho máximo para que no se extienda demasiado */
+            margin-left: auto; /* Centrar el contenedor */
+            margin-right: auto; /* Centrar el contenedor */
+            overflow: hidden; /* Para que los border-radius se apliquen correctamente a los hijos */
+            backdrop-filter: blur(5px); /* Efecto de desenfoque detrás del contenedor */
         }
-        /* Las siguientes clases de cliente-list-item y client-name
-           serán mayormente reemplazadas por clases de Bootstrap como card, d-flex, h5, etc.
-           pero se mantienen si tenías estilos adicionales aquí */
+
+        /* Eliminar estilos por defecto de Bootstrap list-group y list-group-item para mayor control */
+        .list-group-flush {
+            border-radius: 0; 
+        }
+        .list-group-item {
+            padding: 0; /* El padding lo manejaremos con .client-list-item */
+            border: none; /* Quitamos los bordes por defecto de Bootstrap */
+        }
+        .list-group {
+            border-radius: 0; 
+        }
+
+        /* Estilos para cada elemento de la lista de clientes */
         .client-list-item {
-            /* display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee; */
+            display: flex; /* Usar flexbox para alinear elementos internos */
+            justify-content: space-between; /* Espacio entre el nombre y el botón */
+            align-items: center; /* Alinear verticalmente al centro */
+            padding: 18px 25px; /* Más padding para un diseño más espacioso */
+            border-bottom: 1px solid #e9ecef; /* Separador sutil */
+            background-color: transparent; /* Fondo transparente, ya que el contenedor tiene color */
+            transition: background-color 0.2s ease, transform 0.1s ease; /* Transición suave para hover */
         }
+
         .client-list-item:last-child {
-            /* border-bottom: none; */
+            border-bottom: none; /* Eliminar el borde inferior del último elemento */
         }
+
+        .client-list-item:hover {
+            background-color: rgba(248, 249, 250, 0.7); /* Color de fondo ligero y semi-transparente al pasar el mouse */
+            transform: translateY(-2px); /* Pequeño efecto de elevación al pasar el mouse */
+        }
+
         .client-name {
-            /* font-size: 1.1em;
-            font-weight: bold;
-            color: #333; */
+            font-size: 1.3em; /* Un poco más grande el nombre */
+            font-weight: 600; /* Más peso a la fuente */
+            color: #343a40; /* Color de texto oscuro */
+            flex-grow: 1; /* Permite que el nombre ocupe el espacio disponible */
+            margin-right: 20px; /* Espacio entre el nombre y el botón */
         }
 
-        /* Estilos para el modal de chat y los mensajes */
-        .chat-messages {
-            border: 1px solid #eee;
-            padding: 10px;
-            margin-bottom: 10px;
-            height: 300px; /* Altura fija para el área de mensajes */
-            overflow-y: scroll; /* Habilitar scroll */
-            display: flex;
-            flex-direction: column;
-            gap: 8px; /* Espacio entre mensajes */
+        /* Estilos para el botón "Abrir Chat" dentro de la lista de clientes */
+        .client-list-item .btn-primary {
+            background-color: #007bff; 
+            border-color: #007bff;
+            font-weight: 500;
+            padding: 10px 20px; /* Más padding en el botón */
+            border-radius: 8px; /* Bordes más redondeados */
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .client-list-item .btn-primary:hover {
+            background-color: #0056b3; 
+            border-color: #0056b3;
+            transform: translateY(-1px); /* Pequeño efecto de elevación en hover */
         }
 
-        .message {
-            padding: 8px 12px;
-            border-radius: 15px;
-            max-width: 80%;
-            word-wrap: break-word;
-            font-size: 0.9em;
-            line-height: 1.4;
-        }
-
-        .my-message {
-            background-color: #dcf8c6; /* Fondo verde claro para mis mensajes */
-            align-self: flex-end; /* Alinear a la derecha */
-            margin-left: auto; /* Empujar a la derecha */
-        }
-
-        .other-message {
-            background-color: #e0e0e0; /* Fondo gris claro para mensajes del otro */
-            align-self: flex-start; /* Alinear a la izquierda */
-            margin-right: auto; /* Empujar a la izquierda */
-        }
-
-        .timestamp {
-            display: block;
-            font-size: 0.7em;
-            color: #777;
-            margin-top: 2px;
-            text-align: right; /* Alinear la hora a la derecha */
-        }
+        /* --- FIN DE LOS ESTILOS ESPECÍFICOS --- */
     </style>
+
 </head>
 <body>
     <div class="header">
@@ -106,14 +112,13 @@
         </div>
         {% endif %}
 
-        <div class="client-list-container container mt-4"> {% if chats_clientes %}
+        <div class="client-list-container container mt-4"> 
+            {% if chats_clientes %}
                 <ul class="list-group list-group-flush">
                     {% for cliente in chats_clientes %}
                         <li class="list-group-item client-list-item">
-                            <div class="d-flex justify-content-between align-items-center w-100">
-                                <span class="client-name h5 mb-0">{{ cliente.nombre }}</span>
-                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chatModalEntrenador" data-cliente-id="{{ cliente.id }}" data-cliente-nombre="{{ cliente.nombre }}">Abrir Chat</button>
-                            </div>
+                            <span class="client-name h5 mb-0">{{ cliente.nombre }}</span>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chatModalEntrenador" data-cliente-id="{{ cliente.id }}" data-cliente-nombre="{{ cliente.nombre }}">Abrir Chat</button>
                         </li>
                     {% endfor %}
                 </ul>
@@ -131,8 +136,8 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="chat-messages" id="chatMessagesEntrenador">
-                        </div>
+                    <div class="chat-messages" id="chat-box"> 
+                    </div>
                 </div>
                 <div class="modal-footer d-flex">
                     <input type="text" id="chatInputEntrenador" class="form-control me-2" placeholder="Escribe tu mensaje...">
@@ -142,132 +147,141 @@
         </div>
     </div>
 
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const chatModalEl = document.getElementById('chatModalEntrenador');
-        const chatModalBootstrap = new bootstrap.Modal(chatModalEl);
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatModalEl = document.getElementById('chatModalEntrenador');
+            const chatModalBootstrap = new bootstrap.Modal(chatModalEl);
 
-        const chatModalTitleCliente = document.getElementById('chatModalTitleCliente');
-        const chatMessagesDiv = document.getElementById('chatMessagesEntrenador');
-        const chatInput = document.getElementById('chatInputEntrenador');
-        const sendButton = document.getElementById('sendButtonEntrenador');
-        
-        let currentChatClienteId = null;
-        // Obtener el ID del entrenador desde el contexto de Django (asegúrate de que 'entrenador_id' se pasa desde la vista)
-        const loggedInEntrenadorId = {{ entrenador_id|default:"-1" }}; 
-
-        chatModalEl.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget; // Botón que disparó el modal
-            currentChatClienteId = button.dataset.clienteId;
-            const clienteNombre = button.dataset.clienteNombre;
-            chatModalTitleCliente.textContent = clienteNombre; // Actualiza solo el nombre del cliente
-            chatMessagesDiv.innerHTML = ''; // Limpiar mensajes anteriores
-            loadChatMessages(currentChatClienteId); // Cargar mensajes del chat
-            chatInput.focus(); // Pone el foco en el input de chat al abrir el modal
-        });
-
-        // Función para cargar mensajes
-        function loadChatMessages(clienteId) {
+            const chatModalTitleCliente = document.getElementById('chatModalTitleCliente');
+            const chatMessagesDiv = document.getElementById('chat-box');
+            const chatInput = document.getElementById('chatInputEntrenador');
+            const sendButton = document.getElementById('sendButtonEntrenador');
             
-            const chatUrl = `{% url "cargar_mensajes_chat_entrenador" 0 %}`.replace('/0/', `/${clienteId}/`);
-            
-            fetch(chatUrl) // Ahora usa la URL corregida
+            let currentChatClienteId = null;
+            const loggedInEntrenadorId = {{ entrenador_id|default:"-1" }}; 
+
+            chatModalEl.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget; 
+                currentChatClienteId = button.dataset.clienteId;
+                const clienteNombre = button.dataset.clienteNombre;
+                chatModalTitleCliente.textContent = clienteNombre; 
+                chatMessagesDiv.innerHTML = ''; 
+                loadChatMessages(currentChatClienteId); 
+                chatInput.focus(); 
+            });
+
+            function loadChatMessages(clienteId) {
+                const chatUrl = `{% url "cargar_mensajes_chat_entrenador" 0 %}`.replace('/0/', `/${clienteId}/`);
+                
+                fetch(chatUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            chatMessagesDiv.innerHTML = '';
+                            data.chat.forEach(msg => {
+                                const messageElement = document.createElement('div');
+                                messageElement.classList.add('chat-message'); 
+                                messageElement.classList.add(msg.ID_EMISOR == loggedInEntrenadorId ? 'right' : 'left');
+                                
+                                let fechaStr = msg.FECHA;
+                                try {
+                                    const parts = msg.FECHA.match(/(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2})/);
+                                    if (parts) {
+                                        const formattedDate = `${parts[3]}-${parts[2]}-${parts[1]}T${parts[4]}:${parts[5]}:00`;
+                                        const date = new Date(formattedDate);
+                                        fechaStr = new Intl.DateTimeFormat('es-ES', { 
+                                            year: 'numeric', 
+                                            month: 'numeric', 
+                                            day: 'numeric', 
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                        }).format(date);
+                                    } else {
+                                        console.warn("Formato de fecha inesperado:", msg.FECHA);
+                                        const date = new Date(msg.FECHA);
+                                        fechaStr = new Intl.DateTimeFormat('es-ES', { 
+                                            year: 'numeric', 
+                                            month: 'numeric', 
+                                            day: 'numeric', 
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                        }).format(date);
+                                    }
+                                } catch (e) {
+                                    console.error("Error al formatear fecha:", msg.FECHA, e);
+                                    fechaStr = msg.FECHA;
+                                }
+
+                                messageElement.innerHTML = `
+                                    <div class="bubble"> 
+                                        <div class="meta">
+                                            <strong>${msg.NOMBRE_EMISOR}</strong> - ${fechaStr}
+                                        </div>
+                                        ${msg.MENSAJE}
+                                    </div>
+                                `;
+                                chatMessagesDiv.appendChild(messageElement);
+                            });
+                            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+                        } else {
+                            console.error('Error al cargar mensajes:', data.error);
+                        }
+                    })
+                    .catch(error => console.error('Error en fetch al cargar mensajes:', error));
+            }
+
+            sendButton.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    sendMessage();
+                }
+            });
+
+            function sendMessage() {
+                const messageText = chatInput.value.trim();
+                if (messageText === '' || !currentChatClienteId) return;
+
+                const sendUrl = '{% url "enviar_mensaje_chat" %}';
+
+                fetch(sendUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': getCookie('csrftoken') 
+                    },
+                    body: `mensaje=${encodeURIComponent(messageText)}&receptor_id=${currentChatClienteId}`
+                })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        chatMessagesDiv.innerHTML = '';
-                        data.messages.forEach(msg => {
-                            const messageElement = document.createElement('div');
-                            messageElement.classList.add('message');
-                            
-                            // Compara el ID del emisor del mensaje con el ID del entrenador logueado
-                            messageElement.classList.add(msg.ID_EMISOR == loggedInEntrenadorId ? 'my-message' : 'other-message');
-                            
-                            // Formatear la fecha para que se vea bien
-                            let fechaStr = msg.FECHA;
-                            try {
-                                const date = new Date(msg.FECHA);
-                                fechaStr = new Intl.DateTimeFormat('es-ES', { 
-                                    year: 'numeric', 
-                                    month: 'numeric', 
-                                    day: 'numeric', 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
-                                }).format(date);
-                            } catch (e) {
-                                console.warn("Fecha inválida recibida:", msg.FECHA, e);
-                            }
-
-                            messageElement.innerHTML = `
-                                <strong>${msg.NOMBRE_EMISOR}:</strong> ${msg.MENSAJE}
-                                <span class="timestamp">${fechaStr}</span>
-                            `;
-                            chatMessagesDiv.appendChild(messageElement);
-                        });
-                        chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+                        chatInput.value = '';
+                        loadChatMessages(currentChatClienteId); 
                     } else {
-                        console.error('Error al cargar mensajes:', data.error);
-                        alert('Error al cargar mensajes: ' + data.error);
+                        console.error('Error al enviar mensaje:', data.error);
+                        alert('Error al enviar mensaje: ' + data.error); 
                     }
                 })
-                .catch(error => console.error('Error en fetch al cargar mensajes:', error));
-        }
-
-        // Función para enviar mensajes
-        sendButton.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Previene un salto de línea en el textarea
-                sendMessage();
+                .catch(error => console.error('Error en fetch al enviar mensaje:', error));
             }
-        });
 
-        function sendMessage() {
-            const messageText = chatInput.value.trim();
-            if (messageText === '' || !currentChatClienteId) return;
-
-            
-            const sendUrl = '{% url "enviar_mensaje_chat" %}';
-
-            fetch(sendUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCookie('csrftoken') // Obtiene el token de la cookie
-                },
-                body: `mensaje=${encodeURIComponent(messageText)}&receptor_id=${currentChatClienteId}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    chatInput.value = '';
-                    loadChatMessages(currentChatClienteId); // Recargar mensajes después de enviar
-                } else {
-                    console.error('Error al enviar mensaje:', data.error);
-                    alert('Error al enviar mensaje: ' + data.error);
-                }
-            })
-            .catch(error => console.error('Error en fetch al enviar mensaje:', error));
-        }
-
-        // Función para obtener el token CSRF
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
                     }
                 }
+                return cookieValue;
             }
-            return cookieValue;
-        }
-    });
-</script>
+        });
+    </script>
 </body>
 </html>

@@ -59,7 +59,7 @@ body{
     align-items: center;
     justify-content: center;
     width: fit-content;       
-    max-width: 00px;       
+    max-width: 00px;         
     background: rgba(255, 255, 255, 0.1);  
     backdrop-filter: blur(10px);          
     -webkit-backdrop-filter: blur(10px); 
@@ -164,85 +164,78 @@ table {
     color: red;
 }
 
-.chat-message {
-    display: flex;
-    margin-bottom: 10px;
-}
+/* --- INICIO DE LOS ESTILOS DE CHAT UNIFICADOS Y FUNCIONALES --- */
 
-.chat-message.left {
-    justify-content: flex-start;
-}
-
-.chat-message.right {
-    justify-content: flex-end;
-}
-
-.bubble {
-    background-color: #f1f1f1;
-    border-radius: 15px;
-    padding: 10px 15px;
-    max-width: 60%;
-    word-wrap: break-word;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.chat-message.right .bubble {
-    background-color: #d1e7dd; /* color para el usuario */
-}
-
-/* En tu style.css */
-.chat-message {
-    display: flex;
-    margin-bottom: 10px;
-}
-
-.chat-message.right {
-    justify-content: flex-end;
-}
-
-.chat-message.left {
-    justify-content: flex-start;
-}
-
-.chat-message .bubble {
-    max-width: 70%;
-    padding: 10px 15px;
-    border-radius: 20px;
-    position: relative;
-    font-size: 0.9em;
-}
-
-.chat-message.right .bubble {
-    background-color: #007bff; /* Color azul para mensajes del usuario */
-    color: white;
-    margin-left: auto;
-}
-
-.chat-message.left .bubble {
-    background-color: #e0e0e0; /* Color gris claro para mensajes del entrenador */
-    color: #333;
-    margin-right: auto;
-}
-
-.chat-message .meta {
-    font-size: 0.7em;
-    color: #666; /* O blanco si el fondo es oscuro */
-    margin-bottom: 5px;
-    text-align: right; /* Alinea la meta a la derecha para mensajes del usuario */
-}
-
-.chat-message.left .meta {
-    text-align: left; /* Alinea la meta a la izquierda para mensajes del entrenador */
-}
-
-/* Para el contenedor del chat para que tenga un alto fijo y scroll */
-#chat-box {
+/* Contenedor principal de los mensajes del chat */
+#chat-box { /* Asegúrate de que tu div contenedor tenga este ID */
     max-height: 300px; /* O el alto que desees */
     overflow-y: auto;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
-    background-color: #f9f9f9;
-    display: flex; /* Para que los mensajes se apilen correctamente */
-    flex-direction: column; /* Para que los mensajes se apilen correctamente */
+    background-color: #f9f9f9; /* Fondo claro para el área de chat */
+    /* No es necesario display: flex; flex-direction: column; aquí si cada .chat-message ya es flex */
 }
+
+
+/* Estilos para el contenedor de cada mensaje individual */
+.chat-message {
+    display: flex; /* Esencial para alinear el .bubble */
+    margin-bottom: 10px;
+    max-width: 100%; /* Asegura que no se desborde */
+}
+
+/* Alineación para mensajes propios (entrenador) */
+.chat-message.right {
+    justify-content: flex-end; /* Alinea el contenido a la derecha */
+}
+
+/* Alineación para mensajes de otros (cliente) */
+.chat-message.left {
+    justify-content: flex-start; /* Alinea el contenido a la izquierda */
+}
+
+/* Estilos para la "burbuja" del mensaje */
+.bubble {
+    padding: 10px 15px;
+    border-radius: 20px; /* Bordes más redondeados */
+    max-width: 70%; /* La burbuja no ocupa todo el ancho */
+    word-wrap: break-word; /* Rompe palabras largas */
+    font-size: 0.9em;
+    line-height: 1.4;
+    box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13); /* Sombra ligera */
+}
+
+/* Colores de burbuja para mensajes propios (entrenador) */
+.chat-message.right .bubble {
+    background-color: #007bff; /* Azul vibrante */
+    color: white; /* Texto blanco */
+}
+
+/* Colores de burbuja para mensajes de otros (cliente) */
+.chat-message.left .bubble {
+    background-color: #e0e0e0; /* Gris claro */
+    color: #333; /* Texto oscuro */
+}
+
+/* Estilos para el meta (nombre y fecha) dentro de la burbuja */
+.bubble .meta {
+    display: block; /* Asegura que el nombre y fecha estén en su propia línea */
+    font-size: 0.7em;
+    color: #666; /* Gris oscuro */
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+/* Alineación del meta para mensajes propios (entrenador) */
+.chat-message.right .bubble .meta {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.8); /* Más claro para fondo azul */
+}
+
+/* Alineación del meta para mensajes de otros (cliente) */
+.chat-message.left .bubble .meta {
+    text-align: left;
+}
+
+/* --- FIN DE LOS ESTILOS DE CHAT UNIFICADOS Y FUNCIONALES --- */
