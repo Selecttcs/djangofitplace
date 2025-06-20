@@ -17,4 +17,8 @@ urlpatterns=[
     path('Objetivos/', views.objetivos, name='objetivos'),
     path('Planes/', views.planes, name='planes'),
     path('Pago/', views.pago, name='pago'),
+    path('enviar_mensaje_chat/', views.enviar_mensaje_chat, name='enviar_mensaje_chat'),
+    path('cargar_mensajes_chat/cliente/', views.cargar_mensajes_chat, name='cargar_mensajes_chat_cliente'),
+    path('trainer/chats/', views.panel_entrenador_chats, name='panel_entrenador_chats'),
+    path('cargar_mensajes_chat/entrenador/<int:cliente_id>/', views.cargar_mensajes_chat, name='cargar_mensajes_chat_entrenador'),
 ]

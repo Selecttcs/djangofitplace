@@ -97,14 +97,14 @@
                 {% for mensaje in chat %}
                     <div class="chat-message {% if mensaje.NOMBRE_EMISOR == nombre_usuario_logueado %}right{% else %}left{% endif %}">
                         <div class="bubble">
-                            <div class="meta">{{ mensaje.NOMBRE_EMISOR }} - {{ mensaje.FECHA|date:"d-m-Y H:i" }}</div>
+                            <div class="meta"><strong>{{ mensaje.NOMBRE_EMISOR }}</strong> - {{ mensaje.FECHA|date:"d-m-Y H:i" }}</div>
                             {{ mensaje.MENSAJE }}
                         </div>
                     </div>
                 {% endfor %}
             </div>
           </div>
-            <form method="post" action="">
+            <form method="post" action="" id="chat-form">
                 {% csrf_token %}
                 <div class="mb-3" style="padding: 10px;">
                     <strong><label for="mensaje_chat" class="form-label">Escribir mensaje</label></strong>
@@ -116,11 +116,6 @@
             </form>
         </div>
       </div>
-    </div>
-    <div class="container mt-4">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#calendarioModal">
-            Abrir calendario
-        </button>
     </div>
 
     <div class="modal fade" id="calendarioModal" tabindex="-1" aria-labelledby="calendarioModalLabel" aria-hidden="true">
@@ -197,6 +192,90 @@
                     calendar.updateSize();
                 }
             });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatBox = document.getElementById('chat-box');
+            const chatForm = document.getElementById('chat-form'); // Asigna un ID al formulario
+            const mensajeInput = document.getElementById('mensaje_chat');
+
+            // Función para hacer scroll al final del chat
+            function scrollToBottom() {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            // Función para cargar los mensajes (AJAX GET)
+            function loadMessages() {
+                fetch('{% url "cargar_mensajes_chat_cliente" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            chatBox.innerHTML = ''; // Limpiar el chat actual
+                            data.chat.forEach(msg => {
+                                const messageDiv = document.createElement('div');
+                                messageDiv.classList.add('chat-message');
+                                messageDiv.classList.add(msg.ES_MIO ? 'right' : 'left'); // Usa ES_MIO para el lado
+
+                                messageDiv.innerHTML = `
+                                    <div class="bubble">
+                                        <div class="meta">${msg.NOMBRE_EMISOR} - ${msg.FECHA}</div>
+                                        ${msg.MENSAJE}
+                                    </div>
+                                `;
+                                chatBox.appendChild(messageDiv);
+                            });
+                            scrollToBottom(); // Asegurarse de que el chat esté al final después de cargar
+                        } else {
+                            console.error('Error al cargar mensajes:', data.error);
+                        }
+                    })
+                    .catch(error => console.error('Error en fetch para cargar mensajes:', error));
+            }
+
+            // Manejar el envío del formulario (AJAX POST)
+            chatForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // Prevenir el envío normal del formulario
+
+                const mensaje = mensajeInput.value.trim();
+                if (!mensaje) return;
+
+                const formData = new FormData(chatForm); // Envía todos los datos del formulario, incluyendo el CSRF token
+                formData.append('mensaje', mensaje); // Asegúrate de que el nombre del campo coincida con 'mensaje' en la vista
+
+                fetch('{% url "enviar_mensaje_chat" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken') // Envía el CSRF token
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        mensajeInput.value = ''; // Limpiar el input
+                        loadMessages(); // Recargar los mensajes para ver el nuevo
+                    } else {
+                        console.error('Error al enviar mensaje:', data.error);
+                        alert('Error al enviar mensaje: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error en fetch para enviar mensaje:', error));
+            });
+
+            // Cargar mensajes cuando el modal se abre por primera vez
+            const modalElement = document.getElementById('exampleModal');
+            modalElement.addEventListener('shown.bs.modal', function() {
+                loadMessages();
+                scrollToBottom();
+            });
+
+            // Opcional: Recargar mensajes periódicamente (ej. cada 5 segundos)
+            // setInterval(loadMessages, 5000); // Descomenta si quieres un chat "en vivo"
+
+            // Asegurar que el chat se desplace hacia abajo al abrirse si hay muchos mensajes
+            modalElement.addEventListener('shown.bs.modal', scrollToBottom);
+
         });
     </script>
 </body>

@@ -4,6 +4,7 @@ import ssl
 import unicodedata
 import time
 import os
+import json
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -17,6 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.db import connection
 from email.message import EmailMessage
+from datetime import datetime
 
 # Create your views here.
 
@@ -235,7 +237,7 @@ def rutinas(request):
         row = cursor.fetchone()
     plan_id = row[0] if row else None
 
-    id_entrenador = 666575 #temporal
+    id_entrenador = 700000 
 
      # Consulta de mensajes del chat (entre usuario y entrenador)
     with connection.cursor() as cursor:
@@ -378,6 +380,250 @@ def rutinas(request):
         template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
         return render(request, template, context)
 
+@require_POST
+# @csrf_exempt # <--- ¡Cuidado! Elimina esta línea en producción. Mantenla para probar si tienes problemas con CSRF.
+def enviar_mensaje_chat(request):
+    if not request.session.get('user_id'):
+        return JsonResponse({'success': False, 'error': 'Usuario no autenticado'}, status=401)
+
+    id_emisor = request.session.get('user_id') # Este es el ID del usuario logueado (entrenador o cliente)
+    mensaje_texto = request.POST.get('mensaje')
+
+    # OBTENER EL ID DEL RECEPTOR
+    # Si el POST incluye 'receptor_id', úsalo (esto viene del modal del entrenador)
+    id_receptor = request.POST.get('receptor_id') 
+
+    # Si no se proporciona un receptor_id (ej. un cliente envía a su entrenador predeterminado)
+    if not id_receptor:
+        # Aquí podrías tener lógica para determinar el ID del entrenador general o asignado al cliente.
+        # Por ahora, asumamos un ID fijo para el entrenador si el emisor no especificó un receptor
+        # Esto ocurriría si el cliente estuviera chateando, no el entrenador seleccionando un cliente.
+        # Podrías buscar el ID del entrenador asociado al cliente 'id_emisor' si tienes esa relación.
+        # Por simplicidad, si no hay receptor_id, asumimos que el receptor es el entrenador principal.
+        # Ajusta esto si tienes múltiples entrenadores o una asignación diferente.
+        id_receptor = 700000 # ID del entrenador general (o el ID del entrenador al que el cliente siempre chatea)
+    else:
+        id_receptor = int(id_receptor) # Convertir a entero, ya que viene como string del JS
+
+    if not mensaje_texto:
+        return JsonResponse({'success': False, 'error': 'Mensaje vacío'}, status=400)
+
+    try:
+        with connection.cursor() as cursor:
+            # Obtener nombre del usuario emisor (esto sigue siendo correcto)
+            cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': id_emisor})
+            nombre_emisor = cursor.fetchone()[0]
+
+            cursor.execute("""
+                INSERT INTO CHAT_PERSONAL_TRAINER (ID_EMISOR, ID_RECEPTOR, NOMBRE_EMISOR, MENSAJE, FECHA)
+                VALUES (:id_emisor, :id_receptor, :nombre_emisor, :mensaje, SYSDATE)
+            """, {
+                'id_emisor': id_emisor,
+                'id_receptor': id_receptor, # ¡Usamos el id_receptor dinámico!
+                'nombre_emisor': nombre_emisor,
+                'mensaje': mensaje_texto
+            })
+        return JsonResponse({'success': True, 'mensaje_enviado': mensaje_texto, 'timestamp': datetime.now().strftime("%d-%m-%Y %H:%M")})
+    except Exception as e:
+        print(f"Error al enviar mensaje: {e}")
+        return JsonResponse({'success': False, 'error': f"Error al enviar mensaje: {e}"}, status=500)
+# Agrega una nueva vista para cargar mensajes via AJAX
+def cargar_mensajes_chat(request, cliente_id=None): # <--- ¡Añade cliente_id como argumento!
+    if not request.session.get('user_id'):
+        return JsonResponse({'success': False, 'error': 'Usuario no autenticado'}, status=401)
+
+    id_usuario_logueado = request.session.get('user_id') # Este puede ser el entrenador o el cliente
+
+    # Determinar el ID del "otro" usuario en el chat
+    id_entrenador = None
+    id_cliente = None
+
+    if es_entrenador(id_usuario_logueado): # Si el logueado es el entrenador
+        id_entrenador = id_usuario_logueado
+        id_cliente = cliente_id # El cliente_id viene de la URL (del modal del entrenador)
+        if not id_cliente: # Esto no debería pasar si el modal lo envía, pero como fallback
+            return JsonResponse({'success': False, 'error': 'ID de cliente no proporcionado'}, status=400)
+    else: # Si el logueado es un cliente
+        id_cliente = id_usuario_logueado
+        # Aquí, necesitas determinar el ID del entrenador al que este cliente chatea.
+        # Asumiendo un ID fijo para el entrenador principal si no hay una asignación explícita.
+        id_entrenador = 700000 
+        # Si tuvieras una relación cliente-entrenador, la buscarías aquí:
+        # cursor.execute("SELECT ID_ENTRENADOR FROM ASIGNACIONES WHERE ID_CLIENTE = :id", {'id': id_cliente})
+        # id_entrenador = cursor.fetchone()[0]
+
+    try:
+        with connection.cursor() as cursor:
+            # Obtener nombre del usuario logueado para mostrar en el modal (si aplica)
+            cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': id_usuario_logueado})
+            nombre_usuario_logueado_raw = cursor.fetchone()
+            nombre_usuario_logueado = str(nombre_usuario_logueado_raw[0]) if nombre_usuario_logueado_raw else "Desconocido"
+
+            cursor.execute("""
+                SELECT MENSAJE, FECHA, NOMBRE_EMISOR, ID_EMISOR
+                FROM CHAT_PERSONAL_TRAINER
+                WHERE (ID_EMISOR = :id_usuario_1 AND ID_RECEPTOR = :id_usuario_2)
+                OR (ID_EMISOR = :id_usuario_2 AND ID_RECEPTOR = :id_usuario_1)
+                ORDER BY FECHA ASC
+            """, {'id_usuario_1': id_cliente, 'id_usuario_2': id_entrenador}) # <--- Usar id_cliente y id_entrenador
+            raw_messages = cursor.fetchall()
+
+            chat_data = []
+            for msg in raw_messages:
+                mensaje_texto = str(msg[0]) 
+                fecha_formateada = msg[1].strftime("%d-%m-%Y %H:%M")
+                nombre_emisor_texto = str(msg[2])
+                id_emisor = msg[3]
+
+                chat_data.append({
+                    'MENSAJE': mensaje_texto,
+                    'FECHA': fecha_formateada,
+                    'NOMBRE_EMISOR': nombre_emisor_texto,
+                    # 'ID_EMISOR' es importante para el JS para saber si el mensaje es "mío"
+                    'ID_EMISOR': id_emisor 
+                })
+            return JsonResponse({'success': True, 'messages': chat_data, 'nombre_usuario_logueado': nombre_usuario_logueado}) # <--- Cambié 'chat' a 'messages' para ser consistente con el JS
+    except Exception as e:
+        print(f"Error al cargar mensajes: {e}")
+        return JsonResponse({'success': False, 'error': f"Error al cargar mensajes: {e}"}, status=500)
+
+
+
+# Función auxiliar para verificar si el usuario logueado es un entrenador
+def es_entrenador(user_id_from_session):
+    if not user_id_from_session:
+        return False
+    try:
+        with connection.cursor() as cursor:
+            # Asume que el usuario de la sesión se corresponde con un ID_USUARIO en tu tabla USUARIO
+            cursor.execute("SELECT ROL_ID_ROL FROM USUARIO WHERE ID_USUARIO = :id", {'id': user_id_from_session})
+            rol_id = cursor.fetchone()
+            # Verifica si el ROL_ID_ROL es 3 (Entrenador)
+            return rol_id and rol_id[0] == 3
+    except Exception as e:
+        print(f"Error al verificar rol de usuario {user_id_from_session}: {e}")
+        return False
+
+# Decorador personalizado para usar con el ID de sesión
+def entrenador_required(function):
+    def wrap(request, *args, **kwargs):
+        if not es_entrenador(request.session.get('user_id')):
+            messages.warning(request, "No tienes permisos para acceder a esta sección.")
+            return redirect('login') # Redirige a login o a una página de error
+        return function(request, *args, **kwargs)
+    return wrap
+
+# Vista para el panel de chats del entrenador
+@entrenador_required
+def panel_entrenador_chats(request):
+    entrenador_id = request.session.get('user_id')
+    print(f"ID del entrenador logueado: {entrenador_id}")
+    chats_clientes = []
+    try:
+        with connection.cursor() as cursor:
+            # Esta consulta obtiene a los clientes que han enviado/recibido mensajes del entrenador
+            cursor.execute("""
+                SELECT DISTINCT
+                    CASE
+                        WHEN C.ID_EMISOR = :entrenador_id THEN C.ID_RECEPTOR
+                        ELSE C.ID_EMISOR
+                    END AS ID_USUARIO_CLIENTE,
+                    (SELECT U.NOMBRE_COMPLETO FROM USUARIO U WHERE U.ID_USUARIO = (
+                        CASE
+                            WHEN C.ID_EMISOR = :entrenador_id THEN C.ID_RECEPTOR
+                            ELSE C.ID_EMISOR
+                        END
+                    )) AS NOMBRE_CLIENTE
+                FROM CHAT_PERSONAL_TRAINER C
+                WHERE C.ID_EMISOR = :entrenador_id OR C.ID_RECEPTOR = :entrenador_id
+                ORDER BY NOMBRE_CLIENTE ASC
+            """, {'entrenador_id': entrenador_id})
+            
+            for row in cursor.fetchall():
+                cliente_id = row[0]
+                cliente_nombre = str(row[1]) if row[1] else "Cliente Desconocido"
+                chats_clientes.append({'id': cliente_id, 'nombre': cliente_nombre})
+
+    except Exception as e:
+        print(f"Error al cargar lista de chats para entrenador: {e}")
+        messages.error(request, f"Error al cargar la lista de chats: {e}")
+
+    context = {
+        'chats_clientes': chats_clientes
+    }
+    # Asegúrate de que este nombre coincida con tu HTML
+    return render(request, 'fitplace/PanelEntrenador.html', context) # <--- ¡Aquí usas 'PanelEntrenador.html'!
+
+
+# Vista para el chat individual del entrenador con un usuario
+@entrenador_required
+def chat_entrenador_usuario(request, cliente_id): # El ID del cliente con el que el entrenador chateará
+    entrenador_id = request.session.get('user_id')
+    
+    # Lógica para enviar mensaje del entrenador al usuario (POST)
+    if request.method == 'POST':
+        mensaje_texto = request.POST.get('mensaje')
+        if not mensaje_texto or not mensaje_texto.strip():
+            return JsonResponse({'success': False, 'error': 'Mensaje vacío'}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT NOMBRE_COMPLETO FROM USUARIO WHERE ID_USUARIO = :id", {'id': entrenador_id})
+                nombre_entrenador_raw = cursor.fetchone()
+                nombre_entrenador = str(nombre_entrenador_raw[0]) if nombre_entrenador_raw else "Entrenador Desconocido"
+
+                cursor.execute("""
+                    INSERT INTO CHAT_PERSONAL_TRAINER (ID_EMISOR, ID_RECEPTOR, NOMBRE_EMISOR, MENSAJE, FECHA)
+                    VALUES (:id_emisor, :id_receptor, :nombre_emisor, :mensaje, SYSDATE)
+                """, {
+                    'id_emisor': entrenador_id,
+                    'id_receptor': cliente_id,
+                    'nombre_emisor': nombre_entrenador,
+                    'mensaje': mensaje_texto.strip()
+                })
+            return JsonResponse({'success': True, 'mensaje_enviado': mensaje_texto, 'timestamp': datetime.now().strftime("%d-%m-%Y %H:%M")})
+        except Exception as e:
+            print(f"Error al enviar mensaje como entrenador: {e}")
+            return JsonResponse({'success': False, 'error': f"Error al enviar mensaje: {e}"}, status=500)
+
+    # Lógica para cargar mensajes (GET)
+    chat_data = []
+    nombre_cliente = "Cliente Desconocido"
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT NOMBRE_COMPLETO FROM USUARIO WHERE ID_USUARIO = :id", {'id': cliente_id})
+            nombre_cliente_raw = cursor.fetchone()
+            if nombre_cliente_raw:
+                nombre_cliente = str(nombre_cliente_raw[0])
+
+            cursor.execute("""
+                SELECT MENSAJE, FECHA, NOMBRE_EMISOR, ID_EMISOR
+                FROM CHAT_PERSONAL_TRAINER
+                WHERE (ID_EMISOR = :entrenador_id AND ID_RECEPTOR = :cliente_id)
+                OR (ID_EMISOR = :cliente_id AND ID_RECEPTOR = :entrenador_id)
+                ORDER BY FECHA ASC
+            """, {'entrenador_id': entrenador_id, 'cliente_id': cliente_id})
+            raw_messages = cursor.fetchall()
+
+            for msg in raw_messages:
+                chat_data.append({
+                    'MENSAJE': str(msg[0]),
+                    'FECHA': msg[1].strftime("%d-%m-%Y %H:%M"),
+                    'NOMBRE_EMISOR': str(msg[2]),
+                    'ES_MIO': msg[3] == entrenador_id # Para el entrenador, su mensaje es 'mio'
+                })
+    except Exception as e:
+        print(f"Error al cargar chat para entrenador: {e}")
+        messages.error(request, f"Error al cargar el chat con {nombre_cliente}.")
+
+    context = {
+        'chat': chat_data,
+        'nombre_usuario_actual': nombre_cliente, # Nombre del cliente con el que se está chateando
+        'entrenador_id': entrenador_id, # ID del entrenador logueado
+        'cliente_id': cliente_id # ID del cliente actual para enviar mensajes
+    }
+    # Asegúrate de que este nombre coincida con tu HTML
+    return render(request, 'fitplace/chat_entrenador_usuario.html', context)
 
 
 def principal(request):
@@ -386,6 +632,16 @@ def principal(request):
     usuario_id = request.session.get('user_id')
     if not usuario_id:
         return redirect('index')
+
+    # --- INICIO: Lógica para determinar si el usuario es un entrenador ---
+    es_usuario_entrenador = False
+    try:
+        # Asegúrate de que la función es_entrenador esté definida en este archivo
+        es_usuario_entrenador = es_entrenador(usuario_id)
+    except NameError:
+        print("Error: La función 'es_entrenador' no está definida. Asegúrate de incluirla en views.py.")
+    # --- FIN: Lógica para determinar si el usuario es un entrenador ---
+
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT PLAN_ID_PLAN
@@ -393,18 +649,23 @@ def principal(request):
             WHERE ID_USUARIO = :usuario_id
         """, {'usuario_id': usuario_id})
         row = cursor.fetchone()
-    ##Aquí extraemos el ID_Plan que pertenece al usuario logueado
+    
     plan_id = row[0]
 
-    ##Aquí le decimos que si el plan_id es igual a 1 vaya a el template free y si es 2
-    ##Vaya el template premium
+    # Prepara el contexto para la plantilla
+    context = {
+        'es_entrenador': es_usuario_entrenador,
+        # Puedes añadir otros datos al contexto si es necesario para principal.html o PrincipalElite.html
+    }
+
     if plan_id == 1:
-        return render(request, 'fitplace/Principal.html')
+        return render(request, 'fitplace/Principal.html', context) # Pasa el contexto
     elif plan_id == 2:
-        return render(request, 'fitplace/EliteFit/PrincipalElite.html')
+        return render(request, 'fitplace/EliteFit/PrincipalElite.html', context) # Pasa el contexto
 
-
-    return render(request,'fitplace/Principal.html')    
+    # Esta línea se ejecutará si plan_id no es 1 ni 2, o como fallback.
+    # Asegúrate de que siempre se pase el contexto.
+    return render(request, 'fitplace/Principal.html', context)
     
 def comunidad(request):
     # Validación para el tipo de plan
