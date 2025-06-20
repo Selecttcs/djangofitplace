@@ -163,3 +163,29 @@ table {
 .heart-icon.liked {
     color: red;
 }
+
+.chat-message {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.chat-message.left {
+    justify-content: flex-start;
+}
+
+.chat-message.right {
+    justify-content: flex-end;
+}
+
+.bubble {
+    background-color: #f1f1f1;
+    border-radius: 15px;
+    padding: 10px 15px;
+    max-width: 60%;
+    word-wrap: break-word;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.chat-message.right .bubble {
+    background-color: #d1e7dd; /* color para el usuario */
+}

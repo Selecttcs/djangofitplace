@@ -1,0 +1,203 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}" />
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}" type="image/x-icon">
+
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+
+    <title>FitPlace-Rutinas-EliteFIT</title>
+</head>
+<body>
+    <div class="header">
+        <img src="{% static 'fitplace/img/logofit.png' %}" alt="fitPLaceLOGO" class="logo" />
+        <div><h1 style="color: #ffff;">EliteFIT</h1></div>
+        <div style="margin-left: auto; margin-right: 20px; display: flex;">
+            <img src="{% static 'fitplace/img/calendar.png' %}" alt="calendar.png" data-bs-toggle="modal" data-bs-target="#calendarioModal" style="width: 80px; margin-right: 15px; cursor: pointer;">
+            <img src="{% static 'fitplace/img/ejercicio.png' %}" alt="mancuerna.png" data-bs-toggle="modal" data-bs-target="#exampleModal"
+                 style="width: 120px; margin-right: 20px; cursor: pointer;" />
+            <a href="{% url 'retroalimentacion' %}">
+                <img src="{% static 'fitplace/img/retroalimentacion.png' %}" alt="retroalimentacion.png" style="width: 80px; margin-right: 30px;" />
+            </a>
+            <a href="{% url 'principal' %}">
+                <img src="{% static 'fitplace/img/volver.png' %}" alt="volver.png" class="logo-volver" />
+            </a>
+        </div>
+    </div>
+
+    <div class="body">
+        <h1 class="title">RUTINAS</h1>
+
+        {% if mensaje %}
+        <div class="alert alert-warning text-center" role="alert" style="max-width: 600px; margin: 0 auto;">
+            {{ mensaje }}
+        </div>
+        {% endif %}
+
+        {% if tiene_rutina %}
+        <div class="container text-center mb-4">
+            <h2>Rutina asignada: {{ nombre_rutina }}</h2>
+            <p>{{ descripcion_rutina }}</p>
+        </div>
+
+        <div class="container">
+            <table class="table table-bordered text-center">
+                <thead>
+                    <tr style="color: #000000;">
+                        <th>Lunes</th>
+                        <th>Martes</th>
+                        <th>Miércoles</th>
+                        <th>Jueves</th>
+                        <th>Viernes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for dia, ejercicios in rutina_por_dia_lista %}
+                        <td>
+                            {% if ejercicios %}
+                                {% for ejercicio in ejercicios %}
+                                <div><strong>{{ ejercicio.nombre }}</strong><br>{{ ejercicio.descripcion }}</div>
+                                <hr />
+                                {% endfor %}
+                            {% else %}
+                                <div>Sin ejercicios</div>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% else %}
+        <div class="container text-center" style="color: white;">
+            <h2>¿No tienes una rutina?</h2>
+            <h3>Selecciona un objetivo en el perfil!</h3>
+        {% endif %}
+        </div>
+
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" style="opacity: 0.9;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="exampleModalLabel">
+              <div style="display: flex; justify-content: center; align-items: center;">Personal trainer Chat</div>
+            </h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="chat-box" style="max-height: 300px; overflow-y: auto; padding: 10px;">
+                {% for mensaje in chat %}
+                    <div class="chat-message {% if mensaje.NOMBRE_EMISOR == nombre_usuario_logueado %}right{% else %}left{% endif %}">
+                        <div class="bubble">
+                            <div class="meta">{{ mensaje.NOMBRE_EMISOR }} - {{ mensaje.FECHA|date:"d-m-Y H:i" }}</div>
+                            {{ mensaje.MENSAJE }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+          </div>
+            <form method="post" action="">
+                {% csrf_token %}
+                <div class="mb-3" style="padding: 10px;">
+                    <strong><label for="mensaje_chat" class="form-label">Escribir mensaje</label></strong>
+                    <textarea class="form-control" id="mensaje_chat" name="mensaje_chat" rows="3" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-dark">Enviar</button>
+                </div>
+            </form>
+        </div>
+      </div>
+    </div>
+    <div class="container mt-4">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#calendarioModal">
+            Abrir calendario
+        </button>
+    </div>
+
+    <div class="modal fade" id="calendarioModal" tabindex="-1" aria-labelledby="calendarioModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="calendarioModalLabel">Calendario de Objetivos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="calendar"></div> </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar; // Variable para almacenar la instancia del calendario
+
+            // Obtén la instancia del modal de Bootstrap
+            var calendarioModal = new bootstrap.Modal(document.getElementById('calendarioModal'));
+            var modalElement = document.getElementById('calendarioModal');
+
+            // Escucha el evento 'shown.bs.modal' (cuando el modal se ha hecho visible)
+            modalElement.addEventListener('shown.bs.modal', function () {
+                if (!calendar) { // Solo inicializa el calendario si no ha sido inicializado antes
+                    calendar = new FullCalendar.Calendar(calendarEl, {
+                        initialView: 'dayGridMonth', // Vista inicial por mes
+                        locale: 'es', // Establece el idioma a español
+                        headerToolbar: {
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek,timeGridDay' // Opciones de vista
+                        },
+                        // Aquí puedes añadir tus eventos. Por ejemplo, desde una URL JSON:
+                        // events: '/api/tus-objetivos/',
+                        // O eventos estáticos de prueba:
+                        events: [
+                            {
+                                title: 'Objetivo: Perder 2kg',
+                                start: '2025-07-10', // Ajusta el año si es necesario
+                                end: '2025-07-15',
+                                description: 'Revisión con el entrenador para la pérdida de peso'
+                            },
+                            {
+                                title: 'Entrenamiento de fuerza',
+                                start: '2025-07-20T10:00:00',
+                                end: '2025-07-20T12:00:00',
+                                description: 'Sesión de pecho y tríceps'
+                            },
+                            {
+                                title: 'Día de descanso',
+                                start: '2025-07-22'
+                            }
+                        ],
+                        // Opcional: Manejar clics en los eventos
+                        eventClick: function(info) {
+                            alert('Evento: ' + info.event.title + '\nDescripción: ' + (info.event.extendedProps.description || 'N/A'));
+                            // Puedes abrir otro modal o mostrar más detalles aquí
+                        }
+                    });
+                    calendar.render();
+                } else {
+                    // Si el calendario ya fue inicializado, solo asegúrate de que se redibuje correctamente
+                    calendar.updateSize();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

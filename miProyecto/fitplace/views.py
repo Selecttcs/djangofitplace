@@ -213,12 +213,61 @@ def normalize_text(text):
     return text
 
 def rutinas(request):
+    
     usuario_id = request.session.get('user_id')
     print(f"Usuario en sesión: {usuario_id}")
 
     if not usuario_id:
         print("No hay usuario en sesión, redirigiendo a login...")
         return redirect('login')
+    
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
+        resultado = cursor.fetchone()
+        nombre_usuario = resultado[0] if resultado else "Desconocido"
+    # Validación del tipo de plan
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT PLAN_ID_PLAN
+            FROM ADMIN.USUARIO
+            WHERE ID_USUARIO = :usuario_id
+        """, {'usuario_id': usuario_id})
+        row = cursor.fetchone()
+    plan_id = row[0] if row else None
+
+    id_entrenador = 666575 #temporal
+
+     # Consulta de mensajes del chat (entre usuario y entrenador)
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT ID_CHAT, MENSAJE, FECHA, NOMBRE_EMISOR, ID_EMISOR, ID_RECEPTOR
+            FROM CHAT_PERSONAL_TRAINER
+            WHERE (ID_EMISOR = :usuario_id AND ID_RECEPTOR = :id_entrenador)
+            OR (ID_EMISOR = :id_entrenador AND ID_RECEPTOR = :usuario_id)
+            ORDER BY FECHA ASC
+        """, {'usuario_id': usuario_id, 'id_entrenador': id_entrenador})
+        chat_data = cursor.fetchall()
+        columns_chat = [col[0] for col in cursor.description]
+
+    chat = [dict(zip(columns_chat, row)) for row in chat_data]
+
+        # 🔽 BLOQUE PARA INSERTAR MENSAJE NUEVO EN CHAT
+    if request.method == 'POST' and 'mensaje_chat' in request.POST:
+        mensaje_texto = request.POST.get('mensaje_chat')
+        print(f'Mensaje enviado: {mensaje_texto}')
+        if mensaje_texto.strip():
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO chat_personal_trainer (id_emisor, id_receptor, nombre_emisor, mensaje, fecha)
+                    VALUES (:id_emisor, :id_receptor, :nombre_emisor, :mensaje, SYSDATE)
+                 """, {
+                    'id_emisor': usuario_id,
+                    'id_receptor': id_entrenador,
+                    'nombre_emisor': nombre_usuario,
+                    'mensaje': mensaje_texto
+                })
+        return redirect(request.path)
+    # 🔼 FIN BLOQUE CHAT
 
     with connection.cursor() as cursor:
         # Obtener objetivo crudo del usuario
@@ -243,10 +292,12 @@ def rutinas(request):
             context = {
                 'mensaje': 'No tienes un objetivo definido o no soportado. Por favor, establece uno válido para generar rutinas.',
                 'tiene_rutina': False,
-                'rutina_por_dia_lista': []
+                'rutina_por_dia_lista': [],
+                'chat': chat
             }
             print("Objetivo no soportado o no definido, renderizando template sin rutina.")
-            return render(request, 'fitplace/Rutinas.html', context)
+            template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
+            return render(request, template, context)
 
         # Buscar rutina para el objetivo
         cursor.execute("SELECT id_rutina, nombre_rutina, descripcion FROM rutina WHERE objetivo = :obj", {'obj': objetivo})
@@ -255,12 +306,14 @@ def rutinas(request):
 
         if not rutina:
             context = {
-                'mensaje': f'No existe una rutina disponible para el objetivo "{objetivo}".',
+                'mensaje': f'No existe una rutina disponible para el objetivo \"{objetivo}\".',
                 'tiene_rutina': False,
-                'rutina_por_dia_lista': []
+                'rutina_por_dia_lista': [],
+                'chat': chat
             }
             print("No hay rutina para ese objetivo.")
-            return render(request, 'fitplace/Rutinas.html', context)
+            template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
+            return render(request, template, context)
 
         id_rutina, nombre_rutina, descripcion_rutina = rutina
 
@@ -270,50 +323,30 @@ def rutinas(request):
         rutina_asignada = resultado_rutina_asignada[0] if resultado_rutina_asignada else None
         print(f"Rutina asignada actualmente: {rutina_asignada}")
 
-        if request.method == 'POST':
+        # BLOQUE POST PARA GENERAR RUTINA
+        if request.method == 'POST' and 'mensaje' not in request.POST:
             print("Recibido POST para asignar rutina")
 
-            # 1. Asignar la rutina al usuario
             cursor.execute("UPDATE usuario SET id_rutina_asignada = :id_rutina WHERE id_usuario = :id_usuario",
                            {'id_rutina': id_rutina, 'id_usuario': usuario_id})
             print("Rutina asignada al usuario")
 
-            # 2. Eliminar ejercicios anteriores de la rutina
             cursor.execute("DELETE FROM rutina_ejercicios WHERE id_rutina = :id_rutina", {'id_rutina': id_rutina})
             print("Ejercicios anteriores de la rutina eliminados")
 
-            # 3. Obtener ejercicios filtrados por objetivo (usando el campo tipo o similar)
-            cursor.execute("""
-                SELECT id_ejercicio, nombre_ejercicio, descripcion
-                FROM ejercicio
-                WHERE tipo = :tipo_objetivo
-            """, {'tipo_objetivo': objetivo})
-            ejercicios_filtrados = cursor.fetchall()
-            print(f"Ejercicios filtrados para objetivo '{objetivo}': {ejercicios_filtrados}")
-
-            # 4. Distribuir ejercicios por días (ejemplo básico: repartir en días de lunes a viernes)
-            dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-            for i, ejercicio in enumerate(ejercicios_filtrados):
-                dia = dias_semana[i % len(dias_semana)]
-                id_ejercicio = ejercicio[0]
-                cursor.execute("""
-                    INSERT INTO rutina_ejercicios (id_rutina, id_ejercicio, dia_semana)
-                    VALUES (:id_rutina, :id_ejercicio, :dia_semana)
-                """, {'id_rutina': id_rutina, 'id_ejercicio': id_ejercicio, 'dia_semana': dia})
-            print("Ejercicios insertados en rutina_ejercicios distribuídos por día")
-
-            rutina_asignada = id_rutina
+            
 
         if not rutina_asignada:
             print("Usuario no tiene rutina asignada aún.")
             context = {
                 'mensaje': 'No tienes una rutina asignada. Puedes generarla ahora.',
                 'tiene_rutina': False,
-                'rutina_por_dia_lista': []
+                'rutina_por_dia_lista': [],
+                'chat': chat    
             }
-            return render(request, 'fitplace/Rutinas.html', context)
-            
-        # Obtener ejercicios de rutina asignada, organizados por día
+            template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
+            return render(request, template, context)
+
         cursor.execute("""
             SELECT re.dia_semana, e.nombre_ejercicio, e.descripcion
             FROM rutina_ejercicios re
@@ -325,7 +358,6 @@ def rutinas(request):
         for row in resultados:
             print(row)
 
-        # Organizar por días
         dias_orden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
         rutina_por_dia = {dia: [] for dia in dias_orden}
         for dia, nombre, descripcion in resultados:
@@ -338,37 +370,66 @@ def rutinas(request):
             'nombre_rutina': nombre_rutina,
             'descripcion_rutina': descripcion_rutina,
             'mensaje': '',
-            'rutina_por_dia_lista': rutina_por_dia_lista
+            'rutina_por_dia_lista': rutina_por_dia_lista,
+            'chat': chat,
+            'nombre_usuario_logueado': nombre_usuario
         }
         print("Renderizando plantilla con rutina asignada y ejercicios filtrados por día.")
-        return render(request, 'fitplace/Rutinas.html', context)
-
-
-
-
-
-
-
-
+        template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
+        return render(request, template, context)
 
 
 
 def principal(request):
     os.system("cls")
     print("Bienvenido a principal!")
-    context={}
-    return render(request,'fitplace/Principal.html', context)    
+    usuario_id = request.session.get('user_id')
+    if not usuario_id:
+        return redirect('index')
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT PLAN_ID_PLAN
+            FROM ADMIN.USUARIO
+            WHERE ID_USUARIO = :usuario_id
+        """, {'usuario_id': usuario_id})
+        row = cursor.fetchone()
+    ##Aquí extraemos el ID_Plan que pertenece al usuario logueado
+    plan_id = row[0]
+
+    ##Aquí le decimos que si el plan_id es igual a 1 vaya a el template free y si es 2
+    ##Vaya el template premium
+    if plan_id == 1:
+        return render(request, 'fitplace/Principal.html')
+    elif plan_id == 2:
+        return render(request, 'fitplace/EliteFit/PrincipalElite.html')
+
+
+    return render(request,'fitplace/Principal.html')    
     
 def comunidad(request):
-    #Aqui rescatamos la data de la base de datos de la tabla publicacion
+    # Validación para el tipo de plan
+    usuario_id = request.session.get('user_id')
+    if not usuario_id:
+        return redirect('index')
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT PLAN_ID_PLAN
+            FROM ADMIN.USUARIO
+            WHERE ID_USUARIO = :usuario_id
+        """, {'usuario_id': usuario_id})
+        row = cursor.fetchone()
+    
+    plan_id = row[0] if row else None
+
+    # Aquí rescatamos la data de la base de datos de la tabla PUBLICACION
     with connection.cursor() as cursor:
         cursor.execute("""SELECT TITULO, MENSAJE, FECHA FROM ADMIN.PUBLICACION ORDER BY FECHA DESC""")
         publicacion = cursor.fetchall()
 
-    context={'publicacion': publicacion
-    }
+    context = {'publicacion': publicacion}
 
-    # Aquí enviamos con el metodo post la publicacion a la base de datos
+    # Aquí enviamos con el método POST la publicación a la base de datos
     if request.method == "POST":
         titulo = request.POST.get('titulo')
         mensaje = request.POST.get('mensaje')
@@ -378,24 +439,27 @@ def comunidad(request):
             cursor = connection.cursor()
             cursor.execute("""
                 INSERT INTO ADMIN.PUBLICACION (TITULO, MENSAJE, FECHA)
-                VALUES (%s, %s, SYSDATE)
-            """, [titulo, mensaje])
+                VALUES (:titulo, :mensaje, SYSDATE)
+            """, {'titulo': titulo, 'mensaje': mensaje})
             cursor.close()
             print("Publicación subida correctamente.")
 
-            # Mostrar mensaje de éxito
             messages.success(request, "Publicación subida correctamente.")
             return redirect('comunidad')
-        
+
         except Exception as e:
-            # Depuración: Mostrar el error en consola si ocurre
-            print(f"Error al querer subir una publicacion: {e}")  # Depuración
+            print(f"Error al querer subir una publicacion: {e}")
             messages.error(request, f"Error al querer subir una publicacion: {e}")
             return redirect('comunidad')
 
-
-    return render(request,'fitplace/Comunidad.html', context)   
-
+    # Renderizar según el tipo de plan
+    if plan_id == 1:
+        return render(request, 'fitplace/Comunidad.html', context)
+    elif plan_id == 2:
+        return render(request, 'fitplace/EliteFit/ComunidadElite.html', context)
+    else:
+        messages.error(request, "No tienes un plan asociado.")
+        return redirect('index')
 
     
 def retroalimentacion(request):
@@ -406,6 +470,17 @@ def nutricion(request):
     usuario_id = request.session.get('user_id')
     os.system("cls")
     print(f'Bienvenido al apartado de nutrición del usuario ID: {usuario_id}')
+
+    # Obtener el tipo de plan del usuario
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT PLAN_ID_PLAN
+            FROM ADMIN.USUARIO
+            WHERE ID_USUARIO = :id_usuario
+        """, {'id_usuario': usuario_id})
+        plan_row = cursor.fetchone()
+    plan_id = plan_row[0] if plan_row else 1  # Por defecto 1 (Free) si no se encuentra
+
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT EDAD, ESTATURA, PESO, SEXO, OBJETIVO
@@ -416,45 +491,42 @@ def nutricion(request):
 
     if user_data:
         edad = int(user_data[0])
-        estatura_metros = float(user_data[1])  # en metros
-        peso = float(user_data[2])             # en kg
+        estatura_metros = float(user_data[1])
+        peso = float(user_data[2])
         sexo = user_data[3]
-        objetivo = user_data[4] or ''          # puede ser None
+        objetivo = user_data[4] or ''
 
         estatura_cm = estatura_metros * 100
 
-        # Fórmula Harris-Benedict para TMB
+        # Tasa Metabólica Basal (TMB) usando Harris-Benedict
         if sexo.upper() == 'M':
             tmb = 10 * peso + 6.25 * estatura_cm - 5 * edad + 5
         else:
             tmb = 10 * peso + 6.25 * estatura_cm - 5 * edad - 161
 
-        # Ajuste de actividad moderada
+        # Actividad moderada
         calorias_base = tmb * 1.55
 
-        # Ajustar calorías y macros según objetivo
         objetivo = objetivo.lower()
+        ajuste_calorias = 1.0
         proteina_extra = 0
-        ajuste_calorias = 0
 
         if 'masa muscular' in objetivo:
-            ajuste_calorias = 1.20  # +20%
-            proteina_extra = 0.5    # +0.5 g/kg proteína
+            ajuste_calorias = 1.20
+            proteina_extra = 0.5
         elif 'perdida' in objetivo or 'grasa' in objetivo:
-            ajuste_calorias = 0.80  # -20%
+            ajuste_calorias = 0.80
             proteina_extra = 0.5
         elif 'fuerza' in objetivo:
-            ajuste_calorias = 1.15  # +15%
+            ajuste_calorias = 1.15
             proteina_extra = 0.4
         elif 'flexibilidad' in objetivo:
-            ajuste_calorias = 1.0   # mantenimiento
+            ajuste_calorias = 1.0
             proteina_extra = 0.2
-        else:
-            ajuste_calorias = 1.0   # por defecto mantenimiento
 
         calorias = calorias_base * ajuste_calorias
-        proteinas = peso * (2 + proteina_extra)  # base 2g/kg + extra según objetivo
-        grasas = peso * 1   # constante para simplicidad
+        proteinas = peso * (2 + proteina_extra)
+        grasas = peso * 1
         calorias_proteina = proteinas * 4
         calorias_grasa = grasas * 9
         carbohidratos = (calorias - (calorias_proteina + calorias_grasa)) / 4
@@ -477,36 +549,35 @@ def nutricion(request):
     else:
         context = {}
 
-    return render(request, 'fitplace/nutricion.html', context)
+    template = 'fitplace/nutricion.html' if plan_id == 1 else 'fitplace/EliteFit/nutricionELITE.html'
+    return render(request, template, context)
 
 
 def perfil(request):
     usuario_id = request.session.get('user_id')
+    if not usuario_id:
+        return redirect('index')
 
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT NOMBRE_COMPLETO, CORREO_ELECTRONICO, PESO, ESTATURA, EDAD, SEXO, OBJETIVO
-            FROM ADMIN.USUARIO
-            WHERE ID_USUARIO = :id_usuario
-        """, {'id_usuario': usuario_id})
-        user_data = cursor.fetchone()
+    try:
+        with connection.cursor() as cursor:
+            # Obtener datos del usuario y su plan
+            cursor.execute("""
+                SELECT NOMBRE_COMPLETO, CORREO_ELECTRONICO, PESO, ESTATURA, EDAD, SEXO, OBJETIVO, PLAN_ID_PLAN
+                FROM ADMIN.USUARIO
+                WHERE ID_USUARIO = :id_usuario
+            """, {'id_usuario': usuario_id})
+            row = cursor.fetchone()
 
-    if user_data:
-        nombre = user_data[0]
-        correo = user_data[1]
-        peso = user_data[2]
-        estatura = user_data[3]
-        edad = user_data[4]
-        sexo = user_data[5]
-        objetivo = user_data[6]  # Asegúrate que tienes ese campo en la tabla
+        if not row:
+            messages.error(request, "No se encontró el usuario.")
+            return redirect('index')
 
-        # Convertir sexo 'M' o 'F' a texto
-        if sexo.upper() == 'M':
-            genero_texto = 'Masculino'
-        elif sexo.upper() == 'F':
-            genero_texto = 'Femenino'
-        else:
-            genero_texto = 'Otro'
+        nombre, correo, peso, estatura, edad, sexo, objetivo, plan_id = row
+
+        genero = {
+            'M': 'Masculino',
+            'F': 'Femenino'
+        }.get(sexo.upper(), 'Otro')
 
         context = {
             'nombre': nombre,
@@ -514,13 +585,22 @@ def perfil(request):
             'peso': peso,
             'estatura': estatura,
             'edad': edad,
-            'genero': genero_texto,
+            'genero': genero,
             'objetivo': objetivo if objetivo else 'No definido'
         }
-    else:
-        context = {}
 
-    return render(request, 'fitplace/Perfil.html', context)
+        # Render según el tipo de plan
+        if plan_id == 1:
+            return render(request, 'fitplace/Perfil.html', context)
+        elif plan_id == 2:
+            return render(request, 'fitplace/EliteFit/PerfilELITE.html', context)
+        else:
+            messages.error(request, "Tipo de plan desconocido.")
+            return redirect('index')
+
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el perfil: {e}")
+        return redirect('index')
 
 
 def cambiarcredenciales(request):
