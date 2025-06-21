@@ -101,24 +101,13 @@
 
     <div class="body">
         <h1 class="title">Chats con Clientes</h1>
-
-        {% if messages %}
-        <div class="container mt-3">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} text-center" role="alert">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
         <div class="client-list-container container mt-4"> 
             {% if chats_clientes %}
                 <ul class="list-group list-group-flush">
                     {% for cliente in chats_clientes %}
                         <li class="list-group-item client-list-item">
                             <span class="client-name h5 mb-0">{{ cliente.nombre }}</span>
-                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#chatModalEntrenador" data-cliente-id="{{ cliente.id }}" data-cliente-nombre="{{ cliente.nombre }}">Abrir Chat</button>
+                            <button type="button" class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#chatModalEntrenador" data-cliente-id="{{ cliente.id }}" data-cliente-nombre="{{ cliente.nombre }}">Abrir Chat</button>
                         </li>
                     {% endfor %}
                 </ul>
@@ -141,7 +130,7 @@
                 </div>
                 <div class="modal-footer d-flex">
                     <input type="text" id="chatInputEntrenador" class="form-control me-2" placeholder="Escribe tu mensaje...">
-                    <button type="button" id="sendButtonEntrenador" class="btn btn-success">Enviar</button>
+                    <button type="button" id="sendButtonEntrenador" class="btn btn-dark">Enviar</button>
                 </div>
             </div>
         </div>

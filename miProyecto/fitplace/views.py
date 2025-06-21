@@ -143,14 +143,16 @@ def recuperarpass(request):
         print(f"codigo enviado: {codigo_enviado}")
 
         if codigo_ingresado == codigo_enviado:
-            return redirect('restablecerpass')
+            return redirect('cambiarcredencialescode')
         else:
             messages.error(request, "Código incorrecto.")
             mostrar_modal = True
 
     return render(request, 'fitplace/RecuperarPass.html', {'mostrar_modal': mostrar_modal})
 
-
+def cambiarcredencialescode(request):
+    context={}
+    return render(request,'fitplace/cambiarcredencialescode.html', context) 
 
 
 def restablecerpass(request):
@@ -167,10 +169,16 @@ def restablecerpass(request):
             messages.error(request, "Debes completar ambos campos de contraseña.")
         elif nueva_pass != repetir_pass:
             messages.error(request, "Las contraseñas no coinciden.")
-        elif correo:
+        elif not correo: # Cambio aquí: Si correo es None o vacío, maneja el error.
+            messages.error(request, "No se encontró un correo válido para restablecer la contraseña. Por favor, reinicia el proceso de recuperación.")
+            # Puedes redirigir a recuperarpass o login aquí
+            return redirect('recuperarpass') # O 'login'
+        else: # Si correo existe y las contraseñas coinciden
             try:
-                nueva_pass_str = str(nueva_pass) if nueva_pass is not None else ''
-                correo_str = str(correo) if correo is not None else ''
+                # No es estrictamente necesario el str() cast aquí si ya validamos que no es None,
+                # pero no hace daño para asegurar que cx_Oracle reciba un string.
+                nueva_pass_str = str(nueva_pass)
+                correo_str = str(correo)
 
                 with transaction.atomic():
                     with connection.cursor() as cursor:
@@ -183,21 +191,23 @@ def restablecerpass(request):
                         print(f"Filas afectadas por el UPDATE: {filas_afectadas}")
 
                     if filas_afectadas == 0:
-                        messages.error(request, "No se encontró usuario con ese correo.")
+                        messages.error(request, "No se encontró usuario con ese correo o la contraseña es la misma.")
                     else:
                         print("Contraseña actualizada con éxito, redirigiendo...")
                         messages.success(request, "Contraseña actualizada correctamente.")
+                        # Limpia la sesión para evitar reusar el token de recuperación
                         request.session.pop('correo_recuperacion', None)
                         request.session.pop('codigo_recuperacion', None)
-                        return redirect('login')
-
+                        return render(request, 'fitplace/RestablecerPass.html', {'success_alert': True}) # Pasa una bandera para activar SweetAlert2
             except Exception as e:
+                # El error parece ocurrir en esta línea de impresión o en alguna otra interna del cursor
+                # Mantendremos la impresión para depuración, pero se debe revisar el stack trace completo
                 print(f"Exception al actualizar contraseña: {e}")
-                messages.error(request, f"Error al actualizar contraseña: {e}")
-        else:
-            messages.error(request, "No se encontró correo asociado en la sesión.")
-
-    return render(request, 'fitplace/RestablecerPass.html')
+                messages.error(request, f"Error al actualizar contraseña: {e}. Si el problema persiste, contacta a soporte.")
+    
+    # Renderiza la plantilla con el contexto de errores si los hay, o sin ellos si es GET.
+    # Si viene de un POST exitoso, 'success_alert' será True y activará el JS.
+    return render(request, 'fitplace/RestablecerPass.html', {'success_alert': False})
 
 
 
@@ -380,67 +390,134 @@ def rutinas(request):
         template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
         return render(request, template, context)
 
-@require_POST
-# @csrf_exempt # <--- ¡Cuidado! Elimina esta línea en producción. Mantenla para probar si tienes problemas con CSRF.
-def enviar_mensaje_chat(request):
-    if not request.session.get('user_id'):
-        return JsonResponse({'success': False, 'error': 'Usuario no autenticado'}, status=401)
 
-    id_emisor = request.session.get('user_id') # Este es el ID del usuario logueado (entrenador o cliente)
-    mensaje_texto = request.POST.get('mensaje')
+def enviar_mensaje_chat_cliente_post(request):
+    usuario_id = request.session.get('user_id')
+    print(f"enviar_mensaje_chat_cliente_post: Usuario ID {usuario_id} intentando enviar mensaje.")
 
-    # OBTENER EL ID DEL RECEPTOR
-    # Si el POST incluye 'receptor_id', úsalo (esto viene del modal del entrenador o del cliente)
-    receptor_id_str = request.POST.get('receptor_id')
+    if not usuario_id:
+        messages.error(request, "Debes iniciar sesión para enviar mensajes.")
+        return redirect('login') # O a la página de rutinas si lo prefieres
 
-    # Si no se proporciona un receptor_id (ej. un cliente envía a su entrenador predeterminado)
-    if not receptor_id_str:
-        # Aquí asumimos que el receptor es el entrenador principal si no se especificó
-        # Ajusta este ID si tu lógica de negocio es diferente
-        receptor_id = 700000
-    else:
-        try:
-            # ¡IMPORTANTE! Convertir a entero.
-            # Esto previene problemas de tipo de dato si la columna ID_USUARIO es numérica.
-            receptor_id = int(receptor_id_str)
-        except (ValueError, TypeError):
-            return JsonResponse({'success': False, 'error': 'ID de receptor inválido o no numérico'}, status=400)
+    mensaje_texto = request.POST.get('mensaje_chat') # Asegúrate que el name del input en el HTML sea 'mensaje_chat'
+    id_entrenador = 700000 # Asumimos que el cliente siempre chatea con el entrenador principal
 
-    if not mensaje_texto:
-        return JsonResponse({'success': False, 'error': 'Mensaje vacío'}, status=400)
+    if not mensaje_texto or not mensaje_texto.strip():
+        messages.error(request, "El mensaje no puede estar vacío.")
+        return redirect('rutinas') # Redirige a la página de rutinas del cliente
 
     try:
         with connection.cursor() as cursor:
             # Obtener nombre del usuario emisor
-            cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': id_emisor})
+            cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
             resultado_emisor = cursor.fetchone()
-            if not resultado_emisor:
-                return JsonResponse({'success': False, 'error': 'Nombre de emisor no encontrado'}, status=400)
-            nombre_emisor = resultado_emisor[0]
+            nombre_emisor = str(resultado_emisor[0]) if resultado_emisor else "Cliente Desconocido"
+
+            print(f"Preparando inserción: Emisor={usuario_id}, Receptor={id_entrenador}, Nombre={nombre_emisor}, Mensaje='{mensaje_texto}'")
 
             cursor.execute("""
                 INSERT INTO CHAT_PERSONAL_TRAINER (ID_EMISOR, ID_RECEPTOR, NOMBRE_EMISOR, MENSAJE, FECHA)
                 VALUES (:id_emisor, :id_receptor, :nombre_emisor, :mensaje, SYSDATE)
             """, {
-                'id_emisor': id_emisor,
-                'id_receptor': receptor_id, # Usamos el entero convertido
+                'id_emisor': usuario_id,
+                'id_receptor': id_entrenador,
                 'nombre_emisor': nombre_emisor,
-                'mensaje': mensaje_texto
+                'mensaje': mensaje_texto.strip()
+            })
+            connection.commit() # Asegurarse de hacer commit
+            print("Mensaje insertado exitosamente.")
+            messages.success(request, "Mensaje enviado correctamente.")
+    except Exception as e:
+        print(f"Error CRÍTICO al enviar mensaje desde cliente (enviar_mensaje_chat_cliente_post): {e}")
+        messages.error(request, f"Error al enviar mensaje: {e}. Por favor, inténtalo de nuevo.")
+        # Aquí es donde el error de la "llave" debería aparecer. Puedes poner un breakpoint aquí.
+
+    return redirect('rutinas') # Redirige a la página de rutinas del cliente después de enviar el mensaje
+
+
+@require_POST
+@csrf_exempt # ¡MANTÉN ESTO SOLO PARA DEPURACIÓN! Elimínalo en producción.
+def enviar_mensaje_chat(request):
+    print("\n--- INICIO DEPURACIÓN: enviar_mensaje_chat ---")
+    
+    usuario_id = request.session.get('user_id')
+    print(f"DEBUG: 1. Usuario ID de sesión: {usuario_id}")
+
+    if not usuario_id:
+        print("DEBUG: 1.1. Usuario no autenticado. Retornando JsonResponse.")
+        return JsonResponse({'success': False, 'error': 'Usuario no autenticado'}, status=401)
+
+    mensaje_texto = request.POST.get('mensaje')
+    print(f"DEBUG: 2. Mensaje recibido: '{mensaje_texto}'")
+
+    receptor_id_str = request.POST.get('receptor_id')
+    print(f"DEBUG: 3. ID de Receptor (string): '{receptor_id_str}'")
+
+    # --- LÓGICA DE CORRECCIÓN PARA ID_RECEPTOR ---
+    id_entrenador_principal = 700000 # Definimos el ID del entrenador principal
+
+    if not receptor_id_str or receptor_id_str == '-1': # Si es vacío o "-1", asumimos que es el cliente enviando al entrenador principal
+        id_receptor = id_entrenador_principal
+        print(f"DEBUG: 3.1. receptor_id no proporcionado o es '-1'. Asumiendo ID_RECEPTOR = {id_receptor} (Entrenador Principal).")
+    else:
+        try:
+            id_receptor = int(receptor_id_str)
+            print(f"DEBUG: 3.2. ID de Receptor (int): {id_receptor}")
+        except (ValueError, TypeError) as e:
+            print(f"ERROR: 3.3. ID de receptor inválido o no numérico: {receptor_id_str}. Error: {e}")
+            return JsonResponse({'success': False, 'error': 'ID de receptor inválido o no numérico'}, status=400)
+    # --- FIN LÓGICA DE CORRECCIÓN ---
+
+    if not mensaje_texto or not mensaje_texto.strip():
+        print("DEBUG: 4. Mensaje vacío. Retornando JsonResponse.")
+        return JsonResponse({'success': False, 'error': 'Mensaje vacío'}, status=400)
+
+    try:
+        with connection.cursor() as cursor:
+            print("DEBUG: 5. Conexión a la base de datos establecida.")
+            cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
+            resultado_emisor = cursor.fetchone()
+            
+            if not resultado_emisor:
+                print(f"ERROR: 5.1. Nombre de emisor no encontrado para ID: {usuario_id}. Retornando JsonResponse.")
+                return JsonResponse({'success': False, 'error': 'Nombre de emisor no encontrado'}, status=400)
+            
+            nombre_emisor = str(resultado_emisor[0])
+            print(f"DEBUG: 5.2. Nombre del emisor obtenido: '{nombre_emisor}'")
+
+            print("DEBUG: 6. Preparando para ejecutar INSERT en CHAT_PERSONAL_TRAINER...")
+            print(f"   Valores FINALES: ID_EMISOR={usuario_id}, ID_RECEPTOR={id_receptor}, NOMBRE_EMISOR='{nombre_emisor}', MENSAJE='{mensaje_texto.strip()}'")
+
+            cursor.execute("""
+                INSERT INTO CHAT_PERSONAL_TRAINER (ID_EMISOR, ID_RECEPTOR, NOMBRE_EMISOR, MENSAJE, FECHA)
+                VALUES (:id_emisor, :id_receptor, :nombre_emisor, :mensaje, SYSDATE)
+            """, {
+                'id_emisor': usuario_id,
+                'id_receptor': id_receptor,
+                'nombre_emisor': nombre_emisor,
+                'mensaje': mensaje_texto.strip()
             })
             
-            # Es CRÍTICO añadir connection.commit() si tu configuración de Django/Oracle
-            # no maneja el autocommit automáticamente para operaciones directas con cursor.
-            # Si el error ORA-02291 persiste y estás seguro de que el usuario 700000 existe
-            # y es visible globalmente, la falta de un commit podría ser la causa.
+            print("DEBUG: 7. Sentencia INSERT ejecutada. Intentando COMMIT...")
             connection.commit() 
+            print("DEBUG: 8. COMMIT de la transacción exitoso.")
             
-        # Puedes devolver también el mensaje enviado y el timestamp para que el frontend lo agregue inmediatamente
-        # sin necesidad de recargar todos los mensajes si lo deseas.
+        print("DEBUG: 9. Mensaje enviado exitosamente. Retornando JsonResponse éxito.")
         return JsonResponse({'success': True, 'mensaje_enviado': mensaje_texto, 'timestamp': datetime.now().strftime("%d-%m-%Y %H:%M")})
+    
     except Exception as e:
-        print(f"Error al enviar mensaje: {e}")
-        # Devuelve un mensaje de error más detallado en producción para depuración, pero no la excepción completa al usuario final.
+        print(f"ERROR CRÍTICO: 10. Excepción inesperada en enviar_mensaje_chat: {e}")
+        try:
+            connection.rollback()
+            print("DEBUG: 10.1. ROLLBACK ejecutado debido a una excepción.")
+        except Exception as rb_e:
+            print(f"DEBUG: 10.2. Error durante el rollback: {rb_e}")
+        
+        print("DEBUG: 10.3. Retornando JsonResponse con error.")
         return JsonResponse({'success': False, 'error': f"Error al enviar mensaje: {str(e)}"}, status=500)
+
+    finally:
+        print("--- FIN DEPURACIÓN: enviar_mensaje_chat ---\n")
 # Agrega una nueva vista para cargar mensajes via AJAX
 def cargar_mensajes_chat(request, cliente_id=None):
     usuario_logueado_id = request.session.get('user_id')
@@ -976,10 +1053,23 @@ def planes(request):
             if row:
                 plan_actual = row[0]
                 print(f'Plan actual del usuario: {plan_actual}')
+    else:
+        # Si no hay usuario logueado, redirigir a login o mostrar un error
+        messages.error(request, "Debes iniciar sesión para seleccionar un plan.")
+        return redirect('login') # O la URL que consideres apropiada para no logueados
 
     if request.method == 'POST':
         plan_id = request.POST.get('plan')
+        
+        # Convertir plan_id a int para comparación numérica
+        try:
+            plan_id = int(plan_id)
+        except (ValueError, TypeError):
+            messages.error(request, "Selección de plan inválida.")
+            return render(request, 'fitplace/Planes.html', {'plan_actual': plan_actual})
+
         print(f'Nuevo plan seleccionado: {plan_id}.')
+
         if usuario_id and plan_id:
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -987,15 +1077,33 @@ def planes(request):
                     SET PLAN_ID_PLAN = :plan_id
                     WHERE ID_USUARIO = :usuario_id
                 """, {'plan_id': plan_id, 'usuario_id': usuario_id})
-            print('Plan del usuario actualizado correctamente')
-            return redirect('perfil')
-        else:
-            print('Error al actualizar el plan del usuario.')
+                connection.commit() # Asegúrate de hacer commit si no usas @transaction.atomic
+            
+            print(f'Plan del usuario {usuario_id} actualizado a {plan_id} correctamente.')
+
+            # --- Lógica de redirección basada en el plan seleccionado ---
+            if plan_id == 2:  # Elite Fit
+                print("Redirigiendo a la página de pago para ELITE FIT.")
+                messages.info(request, "Has seleccionado el plan Elite Fit. Por favor, completa tu pago.")
+                return redirect('pago')
+            elif plan_id == 1: # Starter Fit
+                print("Redirigiendo a perfil/rutinas para STARTER FIT (no requiere pago).")
+                messages.success(request, "Has seleccionado el plan Starter Fit.")
+                return redirect('perfil') # O 'rutinas', según tu flujo
+            else:
+                messages.warning(request, "Plan seleccionado no reconocido. Redirigiendo a perfil.")
+                return redirect('perfil')
+
+        else: # Este else se ejecuta si usuario_id o plan_id son None/vacío
+            print('Error: Usuario ID o Plan ID faltante al intentar actualizar el plan.')
+            messages.error(request, 'Debe seleccionar un plan y estar logueado.')
             return render(request, 'fitplace/Planes.html', {
                 'error': 'Debe seleccionar un plan',
                 'plan_actual': plan_actual
             })
 
+    # Para solicitudes GET:
+    print('Renderizando página de planes (GET request).')
     return render(request, 'fitplace/Planes.html', {'plan_actual': plan_actual})
 
 
