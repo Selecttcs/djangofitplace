@@ -9,6 +9,7 @@ urlpatterns=[
     path('RestablecerPass/', views.restablecerpass, name='restablecerpass'),
     path('Principal/', views.principal, name='principal'),
     path('Comunidad/', views.comunidad, name='comunidad'),
+    path('like/', views.toggle_like, name='dar_like'),  
     path('Rutinas/', views.rutinas, name='rutinas'),
     path('Retroalimentacion/', views.retroalimentacion, name='retroalimentacion'),
     path('Nutricion/', views.nutricion, name='nutricion'),

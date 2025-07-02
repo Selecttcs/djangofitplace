@@ -24,25 +24,36 @@
         <div class="btns">
             <button type="button" class="btn btn-dark "  data-bs-toggle="modal" data-bs-target="#staticBackdrop">Realizar publicación</button><br>
         </div>
-        <div class="container mt-4">
-            {% for pub in publicacion %}
-            <div class="card mb-3" style="width: 100%; max-width: 600px; margin: 0 auto;">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0">{{ pub.0 }}</h5>
-                        <small class="text-muted">{{ pub.2|date:"d/m/Y" }}</small>
-                    </div>
-                    <i class="fa-regular fa-heart heart-icon" onclick="toggleLike(this)"></i>
-                </div>
-                <div class="card-body">
-                    <p class="mb-0">{{ pub.1 }}</p>
-                </div>
-            </div>
-            
-            {% empty %}
-            <p class="text-center">No hay publicaciones disponibles.</p>
-            {% endfor %}
+      <div class="container mt-4">
+          {% for pub in publicacion %}
+          <div class="card mb-3" style="width: 100%; max-width: 600px; margin: 0 auto;">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                  <div>
+                      <h5 class="mb-0">{{ pub.0 }}</h5> <!-- Título -->
+                      <small class="text-muted">
+                          {{ pub.2|date:"d/m/Y" }} | Creado por: {{ pub.3 }}
+                      </small>
+                  </div>
+              </div>
+              <div class="card-body">
+                  <p class="mb-0">{{ pub.1 }}</p> <!-- Mensaje -->
+
+                  <div class="mt-2 d-flex justify-content-between align-items-center">
+                      <form method="POST" action="{% url 'dar_like' %}">
+                          {% csrf_token %}
+                          <input type="hidden" name="id_publicacion" value="{{ pub.5 }}">
+                          <button type="submit" class="btn btn-sm {% if pub.5 in likes_usuario %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                              {% if pub.5 in likes_usuario %}❤️ Quitar Like{% else %}🤍 Dar Like{% endif %}
+                          </button>
+                      </form>
+                      <span class="text-muted">{{ pub.4 }} likes</span>
+                  </div>
+              </div>
           </div>
+          {% empty %}
+          <p class="text-center">No hay publicaciones disponibles.</p>
+          {% endfor %}
+      </div>
         </div>
         <img src=" {% static 'fitplace/img/eslogancomunidad.png' %}" alt="motivación.png" style="display:flex; justify-content: center; align-items: center; margin-left:auto; margin-right:auto; margin-top:80px;">
 

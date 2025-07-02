@@ -20,6 +20,7 @@ from django.db import connection
 from email.message import EmailMessage
 from datetime import datetime
 
+
 # Create your views here.
 
 def index(request):
@@ -756,11 +757,11 @@ def principal(request):
     return render(request, 'fitplace/Principal.html', context)
     
 def comunidad(request):
-    # Validación para el tipo de plan
     usuario_id = request.session.get('user_id')
     if not usuario_id:
         return redirect('index')
 
+    # Obtener tipo de plan
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT PLAN_ID_PLAN
@@ -768,47 +769,111 @@ def comunidad(request):
             WHERE ID_USUARIO = :usuario_id
         """, {'usuario_id': usuario_id})
         row = cursor.fetchone()
-    
     plan_id = row[0] if row else None
 
-    # Aquí rescatamos la data de la base de datos de la tabla PUBLICACION
-    with connection.cursor() as cursor:
-        cursor.execute("""SELECT TITULO, MENSAJE, FECHA FROM ADMIN.PUBLICACION ORDER BY FECHA DESC""")
-        publicacion = cursor.fetchall()
-
-    context = {'publicacion': publicacion}
-
-    # Aquí enviamos con el método POST la publicación a la base de datos
-    if request.method == "POST":
+    # Insertar nueva publicación
+    if request.method == "POST" and 'titulo' in request.POST:
         titulo = request.POST.get('titulo')
         mensaje = request.POST.get('mensaje')
-        print(f"POST recibido: Titulo: {titulo}, Mensaje: {mensaje}")
 
         try:
-            cursor = connection.cursor()
-            cursor.execute("""
-                INSERT INTO ADMIN.PUBLICACION (TITULO, MENSAJE, FECHA)
-                VALUES (:titulo, :mensaje, SYSDATE)
-            """, {'titulo': titulo, 'mensaje': mensaje})
-            cursor.close()
-            print("Publicación subida correctamente.")
-
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO ADMIN.PUBLICACION (TITULO, MENSAJE, FECHA, ID_USUARIO, LIKES)
+                    VALUES (:titulo, :mensaje, SYSDATE, :usuario_id, 0)
+                """, {
+                    'titulo': titulo,
+                    'mensaje': mensaje,
+                    'usuario_id': usuario_id
+                })
             messages.success(request, "Publicación subida correctamente.")
             return redirect('comunidad')
-
         except Exception as e:
-            print(f"Error al querer subir una publicacion: {e}")
-            messages.error(request, f"Error al querer subir una publicacion: {e}")
+            messages.error(request, f"Error al subir publicación: {e}")
             return redirect('comunidad')
 
-    # Renderizar según el tipo de plan
-    if plan_id == 1:
-        return render(request, 'fitplace/Comunidad.html', context)
-    elif plan_id == 2:
+    # Obtener publicaciones y likes
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT P.TITULO, P.MENSAJE, P.FECHA, NVL(U.NOMBRE_COMPLETO, 'Anónimo'), P.LIKES, P.ID_PUBLICACION
+            FROM ADMIN.PUBLICACION P
+            LEFT JOIN ADMIN.USUARIO U ON U.ID_USUARIO = P.ID_USUARIO
+            ORDER BY P.FECHA DESC
+        """)
+        publicaciones = cursor.fetchall()
+
+    # 🔽 Aquí va tu bloque para traer los likes del usuario actual
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT ID_PUBLICACION FROM LIKE_PUBLICACION
+            WHERE ID_USUARIO = :usuario
+        """, {'usuario': usuario_id})
+        likes_usuario = {row[0] for row in cursor.fetchall()}  # Set de publicaciones likeadas
+
+    # Enviar todo al HTML
+    context = {
+        'publicacion': publicaciones,
+        'likes_usuario': likes_usuario
+    }
+
+    if plan_id == 2:
         return render(request, 'fitplace/EliteFit/ComunidadElite.html', context)
     else:
-        messages.error(request, "No tienes un plan asociado.")
-        return redirect('index')
+        return render(request, 'fitplace/Comunidad.html', context)
+    
+    # Vista para manejar "likes"
+@require_POST
+def toggle_like(request):
+    id_publicacion = request.POST.get('id_publicacion')
+    id_usuario = request.session.get('user_id')
+
+    if not id_usuario:
+        messages.error(request, "Debes iniciar sesión para dar like.")
+        return redirect('login')
+
+    try:
+        with connection.cursor() as cursor:
+            # Verificar si ya dio like antes
+            cursor.execute("""
+                SELECT 1 FROM LIKE_PUBLICACION
+                WHERE ID_USUARIO = :usuario AND ID_PUBLICACION = :publicacion
+            """, {'usuario': id_usuario, 'publicacion': id_publicacion})
+            ya_dio_like = cursor.fetchone()
+
+            if ya_dio_like:
+                # 🔴 Si ya dio like, lo eliminamos y restamos
+                cursor.execute("""
+                    DELETE FROM LIKE_PUBLICACION
+                    WHERE ID_USUARIO = :usuario AND ID_PUBLICACION = :publicacion
+                """, {'usuario': id_usuario, 'publicacion': id_publicacion})
+
+                cursor.execute("""
+                    UPDATE PUBLICACION
+                    SET LIKES = LIKES - 1
+                    WHERE ID_PUBLICACION = :id AND LIKES > 0
+                """, {'id': id_publicacion})
+
+                messages.info(request, "Like eliminado.")
+            else:
+                # 🟢 Si no dio like, lo insertamos y sumamos
+                cursor.execute("""
+                    INSERT INTO LIKE_PUBLICACION (ID_USUARIO, ID_PUBLICACION)
+                    VALUES (:usuario, :publicacion)
+                """, {'usuario': id_usuario, 'publicacion': id_publicacion})
+
+                cursor.execute("""
+                    UPDATE PUBLICACION
+                    SET LIKES = NVL(LIKES, 0) + 1
+                    WHERE ID_PUBLICACION = :id
+                """, {'id': id_publicacion})
+
+                messages.success(request, "¡Like agregado!")
+
+        return redirect('comunidad')
+
+    except Exception as e:
+        messages.error(request, f"Error al procesar el like: {e}")
+        return redirect('comunidad')
 
     
 def retroalimentacion(request):
