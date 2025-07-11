@@ -63,7 +63,14 @@
                         <td>
                             {% if ejercicios %}
                                 {% for ejercicio in ejercicios %}
-                                <div><strong>{{ ejercicio.nombre }}</strong><br>{{ ejercicio.descripcion }}</div>
+                                <div>
+                                    <strong>{{ ejercicio.nombre }}</strong><br>
+                                    {{ ejercicio.descripcion }}<br>
+                                    {% if ejercicio.series %}<strong>Series:</strong> {{ ejercicio.series }}<br>{% endif %}
+                                    {% if ejercicio.repeticiones %}<strong>Repeticiones:</strong> {{ ejercicio.repeticiones }}<br>{% endif %}
+                                    {% if ejercicio.peso %}<strong>Peso:</strong> {{ ejercicio.peso }} kg<br>{% endif %}
+                                    {% if ejercicio.descanso %}<strong>Descanso:</strong> {{ ejercicio.descanso }} seg<br>{% endif %}
+                                </div>
                                 <hr />
                                 {% endfor %}
                             {% else %}

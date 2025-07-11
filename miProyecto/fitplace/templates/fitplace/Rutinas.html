@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous" />
     <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}"  type="image/x-icon">
-
     <title>FitPlace-Rutinas-StarterFIT</title>
 </head>
 <body>
@@ -56,7 +55,14 @@
                         <td>
                             {% if ejercicios %}
                                 {% for ejercicio in ejercicios %}
-                                <div><strong>{{ ejercicio.nombre }}</strong><br>{{ ejercicio.descripcion }}</div>
+                                <div>
+                                    <strong>{{ ejercicio.nombre }}</strong><br>
+                                    {{ ejercicio.descripcion }}<br>
+                                    {% if ejercicio.series %}<strong>Series:</strong> {{ ejercicio.series }}<br>{% endif %}
+                                    {% if ejercicio.repeticiones %}<strong>Repeticiones:</strong> {{ ejercicio.repeticiones }}<br>{% endif %}
+                                    {% if ejercicio.peso %}<strong>Peso:</strong> {{ ejercicio.peso }}<br>{% endif %}
+                                    {% if ejercicio.descanso %}<strong>Descanso:</strong> {{ ejercicio.descanso }}{% endif %}
+                                </div>
                                 <hr />
                                 {% endfor %}
                             {% else %}
@@ -81,37 +87,6 @@
         {% endif %}
     </div>
 
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog" style="opacity: 0.8;">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h1 class="modal-title fs-5" id="exampleModalLabel">
-              <div style="display: flex; justify-content: center; align-items: center;">Ejercicios</div>
-            </h1>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <!-- Aquí renderizamos los ejercicios -->
-            <ul>
-                {% for ejercicio in ejercicios %}
-                    <li>
-                      <strong>Nombre Ejercicio: </strong>{{ ejercicio.0 }}<br />
-                      <strong>Descripción:</strong> {{ ejercicio.1 }}<br />
-                      <strong>Tipo:</strong> {{ ejercicio.2 }}<br /><br />
-                    </li>
-                    <hr />
-                {% empty %}
-                    <p>No hay ejercicios disponibles.</p>
-                {% endfor %}
-            </ul>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cerrar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
 </body>
 </html>

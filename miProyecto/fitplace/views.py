@@ -21,6 +21,11 @@ from email.message import EmailMessage
 from datetime import datetime
 
 
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+
+
+
 # Create your views here.
 
 def index(request):
@@ -226,19 +231,18 @@ def normalize_text(text):
     return text
 
 def rutinas(request):
-    
     usuario_id = request.session.get('user_id')
     print(f"Usuario en sesión: {usuario_id}")
 
     if not usuario_id:
         print("No hay usuario en sesión, redirigiendo a login...")
         return redirect('login')
-    
+
     with connection.cursor() as cursor:
         cursor.execute("SELECT nombre_completo FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
         resultado = cursor.fetchone()
         nombre_usuario = resultado[0] if resultado else "Desconocido"
-    # Validación del tipo de plan
+
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT PLAN_ID_PLAN
@@ -248,9 +252,8 @@ def rutinas(request):
         row = cursor.fetchone()
     plan_id = row[0] if row else None
 
-    id_entrenador = 700000 
+    id_entrenador = 700000
 
-     # Consulta de mensajes del chat (entre usuario y entrenador)
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT ID_CHAT, MENSAJE, FECHA, NOMBRE_EMISOR, ID_EMISOR, ID_RECEPTOR
@@ -264,7 +267,6 @@ def rutinas(request):
 
     chat = [dict(zip(columns_chat, row)) for row in chat_data]
 
-        # 🔽 BLOQUE PARA INSERTAR MENSAJE NUEVO EN CHAT
     if request.method == 'POST' and 'mensaje_chat' in request.POST:
         mensaje_texto = request.POST.get('mensaje_chat')
         print(f'Mensaje enviado: {mensaje_texto}')
@@ -280,10 +282,8 @@ def rutinas(request):
                     'mensaje': mensaje_texto
                 })
         return redirect(request.path)
-    # 🔼 FIN BLOQUE CHAT
 
     with connection.cursor() as cursor:
-        # Obtener objetivo crudo del usuario
         cursor.execute("SELECT objetivo FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
         resultado = cursor.fetchone()
         objetivo_raw = resultado[0] if resultado else None
@@ -308,35 +308,30 @@ def rutinas(request):
                 'rutina_por_dia_lista': [],
                 'chat': chat
             }
-            print("Objetivo no soportado o no definido, renderizando template sin rutina.")
             template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
             return render(request, template, context)
 
-        # Buscar rutina para el objetivo
         cursor.execute("SELECT id_rutina, nombre_rutina, descripcion FROM rutina WHERE objetivo = :obj", {'obj': objetivo})
         rutina = cursor.fetchone()
         print(f"Rutina encontrada para el objetivo: {rutina}")
 
         if not rutina:
             context = {
-                'mensaje': f'No existe una rutina disponible para el objetivo \"{objetivo}\".',
+                'mensaje': f'No existe una rutina disponible para el objetivo "{objetivo}".',
                 'tiene_rutina': False,
                 'rutina_por_dia_lista': [],
                 'chat': chat
             }
-            print("No hay rutina para ese objetivo.")
             template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
             return render(request, template, context)
 
         id_rutina, nombre_rutina, descripcion_rutina = rutina
 
-        # Verificar rutina asignada
         cursor.execute("SELECT id_rutina_asignada FROM usuario WHERE id_usuario = :id", {'id': usuario_id})
         resultado_rutina_asignada = cursor.fetchone()
         rutina_asignada = resultado_rutina_asignada[0] if resultado_rutina_asignada else None
         print(f"Rutina asignada actualmente: {rutina_asignada}")
 
-        # BLOQUE POST PARA GENERAR RUTINA
         if request.method == 'POST' and 'mensaje' not in request.POST:
             print("Recibido POST para asignar rutina")
 
@@ -347,15 +342,12 @@ def rutinas(request):
             cursor.execute("DELETE FROM rutina_ejercicios WHERE id_rutina = :id_rutina", {'id_rutina': id_rutina})
             print("Ejercicios anteriores de la rutina eliminados")
 
-            
-
         if not rutina_asignada:
-            print("Usuario no tiene rutina asignada aún.")
             context = {
                 'mensaje': 'No tienes una rutina asignada. Puedes generarla ahora.',
                 'tiene_rutina': False,
                 'rutina_por_dia_lista': [],
-                'chat': chat    
+                'chat': chat
             }
             template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
             return render(request, template, context)
@@ -373,8 +365,43 @@ def rutinas(request):
 
         dias_orden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
         rutina_por_dia = {dia: [] for dia in dias_orden}
+
+        # Definir valores en duro según objetivo
+        # Valores base
+        series, repeticiones = 3, '12'
+        peso = 'Peso moderado'
+        descanso = '60 segundos'  # valor base
+
+        # Ajustes según objetivo
+        if objetivo == 'masa muscular':
+            series = 4
+            repeticiones = '10'
+            descanso = '90 segundos'
+        elif objetivo == 'fuerza':
+            series = 5
+            repeticiones = '5'
+            descanso = '120 segundos'  # antes era 10 minutos, ahora 2 minutos
+            peso = 'Peso alto'
+        elif objetivo == 'perdida grasa':
+            series = 3
+            repeticiones = '18'
+            descanso = '30 segundos'
+            peso = 'Peso bajo'
+        elif objetivo == 'flexibilidad':
+            series = 3
+            repeticiones = '45 segundos'
+            descanso = '15 segundos'
+            peso = 'Sin peso'
+
         for dia, nombre, descripcion in resultados:
-            rutina_por_dia[dia].append({'nombre': nombre, 'descripcion': descripcion})
+            rutina_por_dia[dia].append({
+                'nombre': nombre,
+                'descripcion': descripcion,
+                'series': series,
+                'repeticiones': repeticiones,
+                'peso': peso,
+                'descanso': descanso
+            })
 
         rutina_por_dia_lista = [(dia, rutina_por_dia[dia]) for dia in dias_orden]
 
@@ -387,7 +414,6 @@ def rutinas(request):
             'chat': chat,
             'nombre_usuario_logueado': nombre_usuario
         }
-        print("Renderizando plantilla con rutina asignada y ejercicios filtrados por día.")
         template = 'fitplace/Rutinas.html' if plan_id == 1 else 'fitplace/EliteFit/RutinasELITE.html'
         return render(request, template, context)
 
@@ -877,8 +903,67 @@ def toggle_like(request):
 
     
 def retroalimentacion(request):
-    context={}
-    return render(request,'fitplace/retroalimentacion.html', context)   
+    user_id = request.user.id  # ID del usuario logueado
+    context = {}
+
+    if request.method == 'POST':
+        intensidad = int(request.POST.get('intensidad'))
+
+        # Lógica para reducir series según la intensidad
+        if intensidad >= 9:
+            porcentaje = 0.5
+        elif intensidad >= 7:
+            porcentaje = 0.7
+        elif intensidad >= 5:
+            porcentaje = 0.85
+        else:
+            porcentaje = 1.0
+
+        with connection.cursor() as cursor:
+            # Consulta para obtener la cantidad total de series del usuario
+            cursor.execute("""
+                SELECT COUNT(*) FROM RUTINA_GENERADA
+                WHERE ID_USUARIO = %s
+            """, [user_id])
+            total_series = cursor.fetchone()[0]
+
+            # Cálculo de las nuevas series
+            nuevas_series = round(total_series * porcentaje)
+
+        context['total_series'] = total_series
+        context['nuevas_series'] = nuevas_series
+        context['intensidad'] = intensidad
+
+    return render(request, 'fitplace/retroalimentacion.html', context)
+
+@csrf_exempt
+def guardar_retroalimentacion(request):
+    if request.method == 'POST':
+        intensidad = int(request.POST.get('intensidad'))
+        usuario_id = request.session.get('usuario_id')  # Asumimos que el usuario está autenticado
+
+        if not usuario_id:
+            return redirect('retroalimentacion')
+
+        # Definir el porcentaje de ajuste
+        if intensidad <= 3:
+            ajuste = 1.2  # Aumentar series un 20%
+        elif intensidad >= 8:
+            ajuste = 0.8  # Disminuir series un 20%
+        else:
+            ajuste = 1.0  # No modificar
+
+        with connection.cursor() as cursor:
+            # Actualiza las series por día de la rutina del usuario
+            cursor.execute("""
+                UPDATE RUTINA_GENERADA
+                SET SERIES = ROUND(SERIES * :ajuste)
+                WHERE ID_USUARIO = :usuario_id
+            """, {'ajuste': ajuste, 'usuario_id': usuario_id})
+
+        return redirect('rutinas')
+
+    return redirect('retroalimentacion')
 
 def nutricion(request):
     usuario_id = request.session.get('user_id')

@@ -1,4 +1,4 @@
-{%load static%}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,33 +6,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{% static 'fitplace/css/style.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
-    <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}"  type="image/x-icon">
-    <script>
-        function Alerta(){
-            Swal.fire({
-                title: "Good job!",
-                text: "You clicked the button!",
-                icon: "success"
-              });
-            }
-    </script>
+    <link rel="icon" href="{% static 'fitplace/img/logofit-ico.ico' %}" type="image/x-icon">
+
+    <!-- ✅ SweetAlert2 arriba para estar disponible -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <title>FitPlace-Login</title>
 </head>
 <body>
     <div class="header">
         <img src="{% static 'fitplace/img/logofit.png' %}" alt="fitPLaceLOGO" class="logo">
         <div style="margin-left: auto; margin-right: 20px;">
-            <a href="{% url 'index' %}"><button type="button"  class="btn btn-light">Volver</button></a>
+            <a href="{% url 'index' %}"><button type="button" class="btn btn-light">Volver</button></a>
         </div>
-            
     </div>
+
     <div class="body">
         <div class="login d-flex justify-content-center align-items-center">
             <div class="container my-5" style="max-width: 500px; background-color: #1e1e1e; opacity: 0.8;">
                 <h1 class="title text-center mb-4">INICIAR SESIÓN</h1>
                 <form method="POST" action="{% url 'login' %}">
                     {% csrf_token %}
-                    
                     <div class="mb-3">
                         <label for="correo" class="form-label text-white">Correo</label>
                         <input type="email" name="correo" id="correo" class="form-control" placeholder="Ingrese su correo" required>
@@ -48,30 +42,29 @@
                         <a href="{% url 'recuperarpass' %}" class="text-primary">¿Olvidaste tu contraseña?</a>
                     </div>
 
-                    <button type="submit" class="btn btn-light w-100">Ingresar</button><br>
+                    <button type="submit" class="btn btn-light w-100">Ingresar</button>
+                    <br>
                 </form>
                 <br>
-
-                {% if messages %}
-                <script>
-                    document.addEventListener("DOMContentLoaded", function () {
-                        {% for message in messages %}
-                            Swal.fire({
-                                icon: "{{ message.tags }}",
-                                title: "{{ message|escapejs }}",
-                                confirmButtonText: 'OK'
-                            });
-                        {% endfor %}
-                    });
-                </script>
-                {% endif %}
             </div>
         </div>
     </div>
 
-
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- ✅ SweetAlert2 solo si hay mensajes -->
+    {% if messages %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            {% for message in messages %}
+            Swal.fire({
+                icon: "{{ message.tags|escapejs }}",
+                title: "{{ message|escapejs }}",
+                confirmButtonText: 'OK'
+            });
+            {% endfor %}
+        });
+    </script>
+    {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
-</body> 
+</body>
 </html>

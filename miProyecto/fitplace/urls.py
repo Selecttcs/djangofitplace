@@ -12,6 +12,7 @@ urlpatterns=[
     path('like/', views.toggle_like, name='dar_like'),  
     path('Rutinas/', views.rutinas, name='rutinas'),
     path('Retroalimentacion/', views.retroalimentacion, name='retroalimentacion'),
+    path('guardar-retroalimentacion/', views.guardar_retroalimentacion, name='guardar_retroalimentacion'),
     path('Nutricion/', views.nutricion, name='nutricion'),
     path('Perfil/', views.perfil, name='perfil'),
     path('CambiarCredenciales/', views.cambiarcredenciales, name='cambiarcredenciales'),
